@@ -1,0 +1,15 @@
+{
+    "extends": "../../tsconfig.json",
+    "include": [
+        "src/**/*.ts",
+        "src/**/*.tsx",
+        "src/**/*.d.ts"
+    ],
+    "compilerOptions": {
+        "jsx": "react-jsx",
+        "module": "ESNext",
+        "moduleResolution": "Bundler",
+        "target": "ESNext",
+        "outDir": "../../dist/renderer"
+    }
+}

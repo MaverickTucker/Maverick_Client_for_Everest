@@ -1,0 +1,520 @@
+MAVERICK CLIENT - ELECTRON TECHNOLOGY STACK
+============================================
+Version: 1.0
+Date: 2026-04-09
+Scope: Large-scale broadcast graphics application (evolving with user feedback)
+
+
+1. CORE ARCHITECTURE
+====================
+
+Maverick Client (Electron) connects to Maverick Relay Server (MRS) on Port 8188
+
+Stack Layers:
+-------------
+┌─────────────────────────────────────────┐
+│  React Components (UI)                    │
+│  - Take buttons, Tag forms, Preview     │
+│  - Tables, Trees, Panels                │
+└────────────┬────────────────────────────┘
+             │
+┌────────────▼────────────────────────────┐
+│  Zustand Stores (Client State)          │
+│  - channelStore: {pgm, pvw, standby}    │
+│  - uiStore: {panels, selections}          │
+│  - hardwareStore: {xkeys, streamdeck}   │
+└────────────┬────────────────────────────┘
+             │
+┌────────────▼────────────────────────────┐
+│  TanStack Query (Server State)          │
+│  - showsQuery, templatesQuery           │
+│  - elementsQuery, enginesQuery            │
+│  - asrunLogsQuery, playoutActions       │
+└────────────┬────────────────────────────┘
+             │
+┌────────────▼────────────────────────────┐
+│  Transport Layer                        │
+│  - Axios (HTTP REST API)                │
+│  - Socket.io (WebSocket real-time)      │
+│  - IPC (Main ↔ Renderer secure bridge)  │
+└────────────┬────────────────────────────┘
+             │
+         MRS :8188
+
+
+2. CORE DEPENDENCIES
+====================
+
+Install these packages:
+
+npm install   @tanstack/react-query   @tanstack/react-router   @tanstack/react-table   axios   electron-store   electron-log   react-hook-form   socket.io-client   sonner   tailwindcss   zod   zustand
+
+
+3. TECHNOLOGY BREAKDOWN
+=======================
+
+API COMMUNICATION
+-----------------
+Axios
+  Purpose: HTTP client for REST API calls to MRS
+  Why: Request/response interceptors, timeout handling, automatic JSON
+  Use: All CRUD operations (Shows, Templates, Elements, Profiles)
+
+Socket.io Client
+  Purpose: Real-time WebSocket connection to MRS
+  Why: Auto-reconnect, heartbeat, room-based subscriptions, event-driven
+  Use: Live channel state, engine status, take confirmations, failover alerts
+
+EventSource (Native)
+  Purpose: Server-sent events for streaming logs
+  Why: Lightweight one-way streaming, automatic reconnection
+  Use: AsRun log tailing, engine metrics streaming
+
+STATE MANAGEMENT
+----------------
+TanStack Query (React Query) v5
+  Purpose: Server state caching and synchronization
+  Why: 
+    - Automatic caching and background refetching
+    - Optimistic updates (instant UI feedback, rollback on error)
+    - No boilerplate for new endpoints
+    - DevTools for debugging
+  Use: All API data (shows, templates, elements, engines, logs)
+
+Zustand
+  Purpose: Client-side UI state
+  Why: 
+    - Minimal boilerplate
+    - Easy to slice (add stores without touching existing)
+    - No providers needed
+    - Excellent TypeScript support
+  Use: 
+    - Current PGM/PVW state
+    - UI panel states (sidebar open/closed)
+    - Hardware panel mappings
+    - Selected items, active filters
+
+Zustand Persist Middleware
+  Purpose: Persist Zustand state to disk
+  Why: Survive app restarts, hydrate on launch
+  Use: User preferences, window positions, recent items
+
+FORMS & VALIDATION
+------------------
+React Hook Form
+  Purpose: Form state management
+  Why: Performance (minimal re-renders), easy validation integration
+  Use: Tag data entry, show creation, profile configuration
+
+Zod
+  Purpose: Schema validation
+  Why: TypeScript-first, runtime validation, auto-generated types
+  Use: Validate API responses, form inputs, tag data schemas
+
+Auto-generated Forms
+  Purpose: Dynamic forms from template tags_schema
+  Implementation: Custom hook combining Zod + React Hook Form
+  Use: Template tag entry panels (generated from MRS schema)
+
+ROUTING & NAVIGATION
+--------------------
+TanStack Router
+  Purpose: Type-safe routing
+  Why: 
+    - TypeScript-safe (no broken links)
+    - Nested routing for complex layouts
+    - Search param state management
+    - Easy to add routes as features grow
+  Use: 
+    - /shows/:showId/templates
+    - /profiles/:profileId/channels
+    - /playout/channel/:channelId
+
+TABLES & DATA DISPLAY
+---------------------
+TanStack Table v8
+  Purpose: Headless table component
+  Why: 
+    - Virtualization support (10k+ rows)
+    - Sorting, filtering, pagination built-in
+    - Easy to extend with new columns
+  Use: 
+    - Template lists
+    - Element/page browsers
+    - AsRun log viewers
+    - Engine status tables
+
+UI COMPONENTS & STYLING
+-----------------------
+Tailwind CSS
+  Purpose: Utility-first styling
+  Why: Rapid iteration, consistent design system, easy theming
+  Use: All components
+
+Radix UI Primitives
+  Purpose: Unstyled accessible components
+  Why: 
+    - Keyboard navigation built-in
+    - Screen reader support
+    - No styling opinions (use Tailwind)
+  Components: Dialog, Dropdown, Tabs, Tooltip, Context Menu
+
+Sonner
+  Purpose: Toast notifications
+  Why: Simple API, stacking, auto-dismiss
+  Use: Take confirmations, errors, engine failover alerts
+
+ELECTRON-SPECIFIC
+-----------------
+electron-store
+  Purpose: Config and settings persistence
+  Why: JSON storage in %APPDATA%, survives updates
+  Use: MRS connection settings, user preferences, recent shows
+
+electron-log
+  Purpose: Logging to file
+  Why: Main and renderer logs, log rotation
+  Use: Debug logs, error tracking, support diagnostics
+
+keytar (optional)
+  Purpose: Secure credential storage
+  Why: System keychain integration (Windows Credential Manager)
+  Use: Auth tokens (if MRS adds authentication)
+
+IPC (contextBridge + ipcRenderer)
+  Purpose: Secure Main ↔ Renderer communication
+  Why: Isolates Node APIs from renderer process
+  Use: 
+    - Hardware USB events (XKeys, Stream Deck)
+    - Auto-updater status
+    - Window management
+
+
+4. WHY THIS STACK SCALES
+========================
+
+Scenario: User requests "Favorites" feature
+----------------------------------------------
+// Just add to API layer - TanStack Query handles cache
+const useFavorites = () => useQuery({
+  queryKey: ['favorites'],
+  queryFn: () => axios.get('http://localhost:8188/api/favorites')
+    .then(r => r.data)
+});
+
+Scenario: User wants live engine temperatures
+-----------------------------------------------
+// Socket.io room subscription
+socket.emit('subscribe', 'engine:metrics');
+socket.on('engine:metrics', (data) => {
+  useEngineStore.getState().updateMetrics(data);
+});
+
+Scenario: New template type with different tags
+-----------------------------------------------
+// Zod schema validation + auto-generated form
+const tagSchema = z.object({
+  player_name: z.string(),
+  score: z.number(),
+  team_logo: z.string().url()
+});
+// React Hook Form generates inputs automatically
+
+Scenario: 10,000 elements in show
+---------------------------------
+// TanStack Table with virtualization
+useReactTable({
+  data: elements,
+  getCoreRowModel: getCoreRowModel(),
+  getVirtualizedRowModel: getVirtualizedRowModel() // smooth scrolling
+});
+
+
+5. PROJECT STRUCTURE
+===================
+
+src/
+├── main/                      # Electron Main Process
+│   ├── index.ts               # Entry point
+│   ├── ipc-handlers.ts        # IPC event handlers
+│   ├── store.ts               # electron-store config
+│   └── hardware/              # USB HID integration
+│       ├── xkeys.ts
+│       └── streamdeck.ts
+├── preload/                   # Preload scripts
+│   └── index.ts               # contextBridge API exposure
+├── renderer/                  # React App
+│   ├── main.tsx               # React entry
+│   ├── App.tsx                # Root component
+│   ├── api/                   # API layer
+│   │   ├── axios.ts           # Axios instance (MRS :8188)
+│   │   ├── socket.ts          # Socket.io client
+│   │   └── endpoints/         # API endpoint definitions
+│   │       ├── shows.ts
+│   │       ├── templates.ts
+│   │       ├── elements.ts
+│   │       ├── profiles.ts
+│   │       ├── channels.ts
+│   │       ├── engines.ts
+│   │       └── playout.ts     # take, out, read, continue
+│   ├── stores/                # Zustand stores
+│   │   ├── channelStore.ts    # PGM/PVW state
+│   │   ├── uiStore.ts         # UI panel states
+│   │   └── hardwareStore.ts   # XKeys/Stream Deck
+│   ├── queries/               # TanStack Query hooks
+│   │   ├── shows.ts
+│   │   ├── templates.ts
+│   │   ├── elements.ts
+│   │   ├── engines.ts
+│   │   └── asrun.ts
+│   ├── hooks/                 # Custom React hooks
+│   │   ├── useTagForm.ts      # Auto-generated forms
+│   │   ├── usePlayout.ts      # Take/out/continue
+│   │   └── useHardware.ts     # Hardware panel integration
+│   ├── components/            # React components
+│   │   ├── layout/            # App shell, panels
+│   │   ├── playout/           # Take buttons, PGM/PVW
+│   │   ├── templates/         # Template browser, preview
+│   │   ├── elements/          # Page browser, data entry
+│   │   ├── forms/             # Auto-generated tag forms
+│   │   └── tables/            # Data tables
+│   ├── routes/                # TanStack Router routes
+│   │   ├── shows.tsx
+│   │   ├── templates.tsx
+│   │   ├── playout.tsx
+│   │   └── settings.tsx
+│   └── styles/                # Tailwind + custom CSS
+│       └── index.css
+└── types/                     # TypeScript types
+    ├── api.ts                 # API response types
+    ├── models.ts              # Domain models (Show, Template, etc.)
+    └── electron.d.ts          # Electron API types
+
+
+6. KEY IMPLEMENTATION PATTERNS
+==============================
+
+Axios Instance (MRS Connection)
+---------------------------------
+// src/renderer/api/axios.ts
+import axios from 'axios';
+
+export const mrsApi = axios.create({
+  baseURL: 'http://localhost:8188',
+  timeout: 5000,
+  headers: {
+    'Content-Type': 'application/json'
+  }
+});
+
+// Add response interceptor for error handling
+mrsApi.interceptors.response.use(
+  (response) => response,
+  (error) => {
+    // Broadcast-safe: Log but don't crash
+    console.error('MRS API Error:', error);
+    return Promise.reject(error);
+  }
+);
+
+Socket.io Connection (Real-time)
+----------------------------------
+// src/renderer/api/socket.ts
+import { io } from 'socket.io-client';
+import { useChannelStore } from '../stores/channelStore';
+
+export const socket = io('http://localhost:8188', {
+  autoConnect: true,
+  reconnection: true,
+  reconnectionDelay: 1000,
+  reconnectionAttempts: 5
+});
+
+// Subscribe to channel events
+export const subscribeToChannel = (channelId: string) => {
+  socket.emit('subscribe', `channel:${channelId}`);
+
+  socket.on(`channel:${channelId}:events`, (event) => {
+    useChannelStore.getState().handleEvent(event);
+  });
+};
+
+TanStack Query Provider
+-----------------------
+// src/renderer/main.tsx
+import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
+
+const queryClient = new QueryClient({
+  defaultOptions: {
+    queries: {
+      staleTime: 5000,      // 5 seconds before refetch
+      refetchOnWindowFocus: false,
+      retry: 3,
+      retryDelay: 1000
+    }
+  }
+});
+
+Zustand Store Example (Channel State)
+-------------------------------------
+// src/renderer/stores/channelStore.ts
+import { create } from 'zustand';
+import { persist } from 'zustand/middleware';
+
+interface ChannelState {
+  pgm: { templateId?: string; elementId?: string; tags?: any } | null;
+  pvw: { templateId?: string; elementId?: string; tags?: any } | null;
+  setPGM: (state: any) => void;
+  setPVW: (state: any) => void;
+  handleEvent: (event: any) => void;
+}
+
+export const useChannelStore = create<ChannelState>()(
+  persist(
+    (set, get) => ({
+      pgm: null,
+      pvw: null,
+      setPGM: (pgm) => set({ pgm }),
+      setPVW: (pvw) => set({ pvw }),
+      handleEvent: (event) => {
+        if (event.type === 'take') {
+          set({ pgm: event.data });
+        }
+      }
+    }),
+    { name: 'channel-storage' }
+  )
+);
+
+Auto-generated Tag Form Hook
+----------------------------
+// src/renderer/hooks/useTagForm.ts
+import { useForm } from 'react-hook-form';
+import { zodResolver } from '@hookform/resolvers/zod';
+import { z } from 'zod';
+
+export const useTagForm = (schema: any, defaultValues: any) => {
+  const zodSchema = buildZodSchema(schema); // Convert MRS schema to Zod
+
+  const form = useForm({
+    resolver: zodResolver(zodSchema),
+    defaultValues
+  });
+
+  return form;
+};
+
+Playout Action Hook
+---------------------
+// src/renderer/hooks/usePlayout.ts
+import { useMutation, useQueryClient } from '@tanstack/react-query';
+import { mrsApi } from '../api/axios';
+
+export const useTake = () => {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: async (params: { 
+      showId: string; 
+      elementId: string; 
+      channelId: string;
+      layer?: number;
+    }) => {
+      const response = await mrsApi.post(
+        `/api/shows/${params.showId}/elements/${params.elementId}/take`,
+        null,
+        { params: { channel_id: params.channelId, layer: params.layer } }
+      );
+      return response.data;
+    },
+    onSuccess: () => {
+      // Invalidate channel state to trigger refetch
+      queryClient.invalidateQueries({ queryKey: ['channel'] });
+    }
+  });
+};
+
+
+7. ELECTRON MAIN PROCESS SETUP
+==============================
+
+IPC for Hardware Integration
+-----------------------------
+// src/main/ipc-handlers.ts
+import { ipcMain } from 'electron';
+import { xkeysPanel } from './hardware/xkeys';
+
+ipcMain.handle('hardware:take', async () => {
+  // Forward to renderer via WebSocket or store
+  return { success: true };
+});
+
+ipcMain.handle('config:get', async (_, key: string) => {
+  return store.get(key);
+});
+
+ipcMain.handle('config:set', async (_, key: string, value: any) => {
+  store.set(key, value);
+  return true;
+});
+
+Preload Script (Secure Bridge)
+------------------------------
+// src/preload/index.ts
+import { contextBridge, ipcRenderer } from 'electron';
+
+contextBridge.exposeInMainWorld('electronAPI', {
+  hardware: {
+    onButtonPress: (callback: (button: number) => void) => 
+      ipcRenderer.on('hardware:button', (_, button) => callback(button))
+  },
+  config: {
+    get: (key: string) => ipcRenderer.invoke('config:get', key),
+    set: (key: string, value: any) => ipcRenderer.invoke('config:set', key, value)
+  }
+});
+
+
+8. DEVELOPMENT TOOLS
+==================
+
+Recommended VS Code Extensions:
+- ESLint
+- Prettier
+- Tailwind CSS IntelliSense
+- TypeScript Importer
+- Electron Fiddle (for testing)
+
+Dev Scripts (package.json):
+{
+  "scripts": {
+    "dev": "electron-vite dev",
+    "build": "electron-vite build",
+    "preview": "electron-vite preview",
+    "lint": "eslint . --ext .js,.jsx,.cjs,.mjs,.ts,.tsx,.cts,.mts --fix"
+  }
+}
+
+
+9. SUMMARY TABLE
+================
+
+| Category | Technology | Purpose | Growth Benefit |
+|----------|-----------|---------|----------------|
+| HTTP | Axios | REST API to MRS | Interceptors, error handling |
+| WebSocket | Socket.io | Real-time events | Auto-reconnect, rooms |
+| Server State | TanStack Query | API caching | Add endpoints without boilerplate |
+| Client State | Zustand | UI state | Slice stores, easy to extend |
+| Persistence | electron-store | Config storage | Survives updates |
+| Forms | React Hook Form + Zod | Tag entry | Auto-generate from schemas |
+| Routing | TanStack Router | Navigation | Type-safe, easy to add routes |
+| Tables | TanStack Table | Data display | Virtualization for 10k+ rows |
+| UI | Tailwind + Radix | Styling | Consistent, accessible |
+| Notifications | Sonner | Toasts | Simple API |
+| Logging | electron-log | Debug | Log rotation |
+
+
+END OF DOCUMENT
+===============
+Prepared for: Maverick Client development team
+Target: Large-scale broadcast application with continuous user-driven growth

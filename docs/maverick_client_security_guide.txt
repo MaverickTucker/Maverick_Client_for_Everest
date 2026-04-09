@@ -1,0 +1,609 @@
+MAVERICK CLIENT - SECURITY & CODE PROTECTION GUIDE
+==================================================
+Version: 1.0
+Date: 2026-04-09
+Scope: Reverse engineering protection, secure communication, broadcast-grade hardening
+
+
+1. THREAT MODEL
+===============
+
+Broadcast Environment Threats:
+-------------------------------
+1. Reverse Engineering
+   - Competitors extracting proprietary tag parsing logic
+   - Scene file format analysis
+   - API protocol documentation for clones
+
+2. Runtime Tampering
+   - Modified client sending unauthorized take commands
+   - Fake MRS responses causing on-air errors
+   - Memory injection to alter tag data
+
+3. Network Attacks
+   - Man-in-the-middle between Client and MRS
+   - Replay attacks on take commands
+   - Unauthorized API access from control room
+
+4. Insider Threats
+   - Operator stealing show files
+   - Exfiltration of template library
+   - Credential sharing
+
+5. Supply Chain
+   - Compromised npm packages
+   - Malicious developer tools
+   - Modified build artifacts
+
+
+2. CODE PROTECTION STRATEGY
+===========================
+
+LAYER 1: SOURCE CODE PROTECTION
+--------------------------------
+
+A. JavaScript/TypeScript Obfuscation
+   Technology: javascript-obfuscator
+   Package: javascript-obfuscator
+
+   Implementation:
+   - Integrate into electron-vite build process
+   - High-performance mode for critical paths
+   - String encryption for API endpoints
+
+   Configuration:
+   {
+     "compact": true,
+     "controlFlowFlattening": true,
+     "controlFlowFlatteningThreshold": 0.75,
+     "deadCodeInjection": true,
+     "deadCodeInjectionThreshold": 0.4,
+     "debugProtection": true,
+     "debugProtectionInterval": 2000,
+     "disableConsoleOutput": true,
+     "identifierNamesGenerator": "mangled",
+     "log": false,
+     "numbersToExpressions": true,
+     "renameGlobals": true,
+     "rotateStringArray": true,
+     "selfDefending": true,
+     "shuffleStringArray": true,
+     "splitStrings": true,
+     "splitStringsChunkLength": 5,
+     "stringArray": true,
+     "stringArrayEncoding": ["rc4"],
+     "stringArrayThreshold": 0.75,
+     "transformObjectKeys": true,
+     "unicodeEscapeSequence": true
+   }
+
+B. Native Module Protection
+   Technology: N-API / node-addon-api
+
+   Critical logic moves to compiled C++:
+   - Tag schema parsing algorithms
+   - Scene file validation
+   - TCP protocol handshake with MRS
+   - License verification
+
+   Structure:
+   src/
+   └── native/
+       ├── binding.gyp
+       ├── src/
+       │   ├── tag_parser.cc      # Obfuscated C++
+       │   ├── scene_validator.cc # Proprietary logic
+       │   └── license_check.cc   # Hardware-locked
+       └── include/
+
+C. Binary Hardening (Windows)
+   Tools:
+   - VMProtect / Themida (optional, expensive)
+   - UPX (basic compression, not security)
+   - Windows Code Signing (EV Certificate)
+
+   Implementation:
+   - Sign all executables (MaverickClient.exe, native modules)
+   - Windows SmartScreen compliance
+   - AppLocker/WDAC policies for broadcast IT
+
+LAYER 2: RUNTIME PROTECTION
+---------------------------
+
+A. Anti-Debugging (Electron Main)
+   Technology: native addon with Windows API
+
+   Checks:
+   - IsDebuggerPresent()
+   - CheckRemoteDebuggerPresent()
+   - Hardware breakpoints (Dr0-Dr7)
+   - Timing checks (rdtsc)
+
+   Response:
+   - Delayed crash (not immediate - hide detection)
+   - Corrupted memory (subtle failure)
+   - Exit with generic error code
+
+B. Code Integrity Verification
+   Technology: electron-builder + hash verification
+
+   Implementation:
+   1. Build computes SHA-256 of all ASAR contents
+   2. Hash stored in signed manifest
+   3. Runtime: Main process verifies ASAR integrity
+   4. Mismatch = refuse to start (silent log to MRS)
+
+C. Memory Protection
+   Technology: electron-safe-storage (native)
+
+   Sensitive data handling:
+   - Encryption keys: Windows DPAPI (never in JS heap)
+   - Tag data buffers: SecureZeroMemory on free
+   - WebSocket tokens: Rotated every 15 minutes
+
+LAYER 3: COMMUNICATION SECURITY
+--------------------------------
+
+A. MRS Connection Encryption
+   Technology: TLS 1.3 (OpenSSL via Node)
+
+   Implementation:
+   - Self-signed CA for internal broadcast network
+   - Certificate pinning in Maverick Client
+   - Mutual TLS (mTLS) optional for high-security
+
+   Configuration:
+   {
+     "mrs_host": "192.168.10.10",
+     "mrs_port": 8188,
+     "protocol": "https",
+     "cert_pin": "sha256/AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA=",
+     "reject_unauthorized": true
+   }
+
+B. API Request Signing
+   Technology: HMAC-SHA256
+
+   Implementation:
+   - Each request signed with client secret
+   - Timestamp prevents replay (5-minute window)
+   - Nonce for idempotency
+
+   Headers:
+   X-Maverick-Signature: sha256=<hmac>
+   X-Maverick-Timestamp: 1712680800
+   X-Maverick-Nonce: <uuid>
+
+C. WebSocket Authentication
+   Technology: Socket.io + JWT
+
+   Flow:
+   1. Client authenticates via HTTPS to MRS
+   2. Receives short-lived JWT (5 min)
+   3. WebSocket connects with JWT query param
+   4. MRS validates, establishes session
+   5. JWT refresh every 4 minutes via existing WS
+
+
+3. SECURE ARCHITECTURE IMPLEMENTATION
+=====================================
+
+SECURE PROJECT STRUCTURE
+------------------------
+maverick-client/
+├── src/
+│   ├── main/                      # Electron Main (protected)
+│   │   ├── index.ts               # Entry (obfuscated)
+│   │   ├── security/              # Security modules
+│   │   │   ├── integrity.ts       # ASAR verification
+│   │   │   ├── anti-debug.ts      # Debugger detection
+│   │   │   └── secure-storage.ts  # DPAPI wrapper
+│   │   ├── native/                # C++ addons (compiled)
+│   │   │   ├── tag-parser.node    # Proprietary logic
+│   │   │   ├── license.node       # Hardware locking
+│   │   │   └── crypto.node        # Custom primitives
+│   │   └── ipc/                   # Secure IPC
+│   │       └── secure-handlers.ts # Validated handlers
+│   ├── renderer/                  # React (obfuscated)
+│   │   ├── main.tsx               # Entry (obfuscated)
+│   │   ├── api/                   # API layer (encrypted strings)
+│   │   │   ├── secure-axios.ts    # HMAC signing
+│   │   │   └── secure-socket.ts   # JWT auth
+│   │   └── ...
+│   └── shared/                    # Shared types (minimal)
+├── native/                        # C++ source (separate repo)
+│   ├── tag-parser/
+│   ├── license/
+│   └── crypto/
+├── build/
+│   ├── obfuscator-config.json     # Obfuscation rules
+│   ├── signing/                   # EV certificates
+│   └── integrity-manifest.json    # ASAR hashes
+└── scripts/
+    ├── build-secure.js             # Secure build pipeline
+    └── verify-integrity.js         # Pre-flight check
+
+
+4. IMPLEMENTATION GUIDE
+========================
+
+STEP 1: OBFUSCATION SETUP
+-------------------------
+Install:
+npm install --save-dev javascript-obfuscator
+
+Vite Plugin (vite.config.ts):
+import { obfuscator } from 'rollup-obfuscator';
+
+export default defineConfig({
+  plugins: [
+    obfuscator({
+      include: ['src/**/*.ts', 'src/**/*.tsx'],
+      exclude: ['node_modules'],
+      options: {
+        compact: true,
+        controlFlowFlattening: true,
+        deadCodeInjection: true,
+        debugProtection: true,
+        disableConsoleOutput: true,
+        stringArray: true,
+        stringArrayEncoding: ['rc4'],
+        selfDefending: true
+      }
+    })
+  ]
+});
+
+STEP 2: NATIVE MODULE SETUP
+---------------------------
+Install:
+npm install node-addon-api bindings
+npm install --save-dev node-gyp
+
+binding.gyp:
+{
+  "targets": [{
+    "target_name": "maverick-native",
+    "sources": [
+      "native/src/tag_parser.cc",
+      "native/src/license_check.cc",
+      "native/src/crypto.cc"
+    ],
+    "include_dirs": [
+      "<!@(node -p "require('node-addon-api').include")"
+    ],
+    "dependencies": [
+      "<!(node -p "require('node-addon-api').gyp")"
+    ],
+    "cflags!": ["-fno-exceptions"],
+    "cflags_cc!": ["-fno-exceptions"],
+    "defines": ["NAPI_CPP_EXCEPTIONS"],
+    "conditions": [
+      ["OS=='win'", {
+        "libraries": [
+          "-lcrypt32",
+          "-lws2_32"
+        ]
+      }]
+    ]
+  }]
+}
+
+STEP 3: SECURE STORAGE
+----------------------
+// src/main/security/secure-storage.ts
+import { safeStorage } from 'electron';
+
+export class SecureStorage {
+  static encrypt(plaintext: string): Buffer {
+    if (!safeStorage.isEncryptionAvailable()) {
+      throw new Error('Encryption not available');
+    }
+    return safeStorage.encryptString(plaintext);
+  }
+
+  static decrypt(ciphertext: Buffer): string {
+    return safeStorage.decryptString(ciphertext);
+  }
+
+  // Store sensitive config
+  static saveConfig(key: string, value: string): void {
+    const encrypted = this.encrypt(value);
+    // Store to electron-store (encrypted blob)
+    store.set(`secure.${key}`, encrypted.toString('base64'));
+  }
+}
+
+STEP 4: ANTI-DEBUG (C++ Addon)
+-------------------------------
+// native/src/anti_debug.cc
+#include <windows.h>
+#include <node.h>
+
+bool CheckDebugger() {
+  // Check 1: IsDebuggerPresent
+  if (IsDebuggerPresent()) return true;
+
+  // Check 2: Remote debugger
+  BOOL remoteDebug = FALSE;
+  CheckRemoteDebuggerPresent(GetCurrentProcess(), &remoteDebug);
+  if (remoteDebug) return true;
+
+  // Check 3: Hardware breakpoints
+  CONTEXT ctx = {};
+  ctx.ContextFlags = CONTEXT_DEBUG_REGISTERS;
+  if (GetThreadContext(GetCurrentThread(), &ctx)) {
+    if (ctx.Dr0 || ctx.Dr1 || ctx.Dr2 || ctx.Dr3) return true;
+  }
+
+  // Check 4: Timing (rdtsc)
+  ULONGLONG t1 = __rdtsc();
+  // ... some work ...
+  ULONGLONG t2 = __rdtsc();
+  if ((t2 - t1) > 0x10000000) return true; // Suspicious delay
+
+  return false;
+}
+
+Napi::Value IsDebugged(const Napi::CallbackInfo& info) {
+  return Napi::Boolean::New(info.Env(), CheckDebugger());
+}
+
+STEP 5: API HMAC SIGNING
+------------------------
+// src/renderer/api/secure-axios.ts
+import axios from 'axios';
+import crypto from 'crypto';
+
+const CLIENT_SECRET = process.env.MAVERICK_CLIENT_SECRET; // From secure storage
+
+export const secureAxios = axios.create({
+  baseURL: 'https://localhost:8188',
+  timeout: 5000
+});
+
+secureAxios.interceptors.request.use((config) => {
+  const timestamp = Math.floor(Date.now() / 1000).toString();
+  const nonce = crypto.randomUUID();
+  const method = config.method?.toUpperCase() || 'GET';
+  const path = config.url || '/';
+  const body = config.data ? JSON.stringify(config.data) : '';
+
+  // HMAC-SHA256 signature
+  const signaturePayload = `${method}:${path}:${timestamp}:${nonce}:${body}`;
+  const signature = crypto
+    .createHmac('sha256', CLIENT_SECRET)
+    .update(signaturePayload)
+    .digest('hex');
+
+  config.headers['X-Maverick-Signature'] = `sha256=${signature}`;
+  config.headers['X-Maverick-Timestamp'] = timestamp;
+  config.headers['X-Maverick-Nonce'] = nonce;
+
+  return config;
+});
+
+STEP 6: CERTIFICATE PINNING
+---------------------------
+// src/main/security/pinning.ts
+import { app } from 'electron';
+import path from 'path';
+import fs from 'fs';
+
+export class CertificatePinning {
+  private pinnedHash: string;
+
+  constructor() {
+    // Load from secure config (obfuscated)
+    this.pinnedHash = this.loadPinnedHash();
+  }
+
+  verifyCertificate(cert: Certificate): boolean {
+    const certHash = crypto
+      .createHash('sha256')
+      .update(cert.data)
+      .digest('base64');
+
+    return certHash === this.pinnedHash;
+  }
+
+  setupSession(session: Electron.Session): void {
+    session.setCertificateVerifyProc((request, callback) => {
+      if (request.hostname === 'localhost') {
+        // Always allow localhost (development)
+        callback(0);
+        return;
+      }
+
+      if (this.verifyCertificate(request.certificate)) {
+        callback(0); // Valid
+      } else {
+        callback(-2); // Fatal error (pinning failed)
+        // Log security event to MRS
+        this.reportPinningFailure(request);
+      }
+    });
+  }
+}
+
+
+5. BUILD PIPELINE (SECURE)
+==========================
+
+scripts/build-secure.js:
+-------------------------
+const { execSync } = require('child_process');
+const fs = require('fs');
+const crypto = require('crypto');
+const path = require('path');
+
+// 1. Clean build
+console.log('Step 1: Clean build directory...');
+execSync('rimraf dist');
+
+// 2. Compile native addons
+console.log('Step 2: Compile native modules...');
+execSync('node-gyp rebuild --release');
+
+// 3. Obfuscate renderer code
+console.log('Step 3: Obfuscate JavaScript...');
+// Vite plugin handles this automatically
+
+// 4. Build Electron
+console.log('Step 4: Build Electron...');
+execSync('electron-vite build');
+
+// 5. Generate integrity manifest
+console.log('Step 5: Generate integrity manifest...');
+const asarPath = path.join('dist', 'win-unpacked', 'resources', 'app.asar');
+const asarHash = crypto.createHash('sha256')
+  .update(fs.readFileSync(asarPath))
+  .digest('hex');
+
+const manifest = {
+  version: process.env.npm_package_version,
+  buildTime: new Date().toISOString(),
+  asarHash: asarHash,
+  nativeModules: [
+    'maverick-native.node',
+    'license.node'
+  ].map(mod => ({
+    name: mod,
+    hash: hashFile(path.join('dist', 'win-unpacked', 'resources', 'app', '.webpack', 'native', mod))
+  }))
+};
+
+fs.writeFileSync(
+  path.join('dist', 'win-unpacked', 'integrity-manifest.json'),
+  JSON.stringify(manifest, null, 2)
+);
+
+// 6. Sign executables
+console.log('Step 6: Code signing...');
+execSync(`signtool sign /f "${process.env.CERT_PATH}" /p "${process.env.CERT_PASS}" /tr http://timestamp.digicert.com /td sha256 /fd sha256 "dist/win-unpacked/MaverickClient.exe"`);
+
+console.log('Secure build complete!');
+
+function hashFile(filePath) {
+  return crypto.createHash('sha256')
+    .update(fs.readFileSync(filePath))
+    .digest('hex');
+}
+
+
+6. RUNTIME SECURITY CHECKS
+==========================
+
+Pre-Flight Checks (Main Process):
+---------------------------------
+// src/main/security/pre-flight.ts
+export class PreFlightChecks {
+  static run(): boolean {
+    // 1. Integrity check
+    if (!this.verifyIntegrity()) {
+      this.securityFailure('INTEGRITY_VIOLATION');
+      return false;
+    }
+
+    // 2. Debugger check
+    if (nativeModule.isDebugged()) {
+      this.securityFailure('DEBUGGER_DETECTED');
+      return false;
+    }
+
+    // 3. VM check
+    if (this.isRunningInVM()) {
+      this.securityFailure('VM_DETECTED');
+      return false;
+    }
+
+    // 4. Clock tampering check
+    if (this.isClockTampered()) {
+      this.securityFailure('CLOCK_TAMPERING');
+      return false;
+    }
+
+    return true;
+  }
+
+  private static securityFailure(reason: string): void {
+    // Silent failure - log to MRS, exit with generic code
+    console.error(`Security failure: ${reason}`);
+    // Send to MRS for monitoring
+    // ...
+    app.exit(1);
+  }
+}
+
+
+7. DEPENDENCY SECURITY
+====================
+
+A. Audit on Build
+   npm audit --audit-level=moderate
+
+B. Lockfile Integrity
+   - Commit package-lock.json
+   - CI verifies lockfile matches
+
+C. Private Registry
+   - Use Verdaccio or Artifactory
+   - Pin all versions (no ^ or ~)
+
+D. SBOM Generation
+   npm sbom --format=spdx-json > sbom.json
+
+
+8. SUMMARY: SECURITY LAYERS
+===========================
+
+| Layer | Technology | Protection |
+|-------|-----------|------------|
+| 1. Source | javascript-obfuscator | Reverse engineering |
+| 2. Native | C++ addons (N-API) | Critical logic extraction |
+| 3. Binary | Code signing + integrity | Tampering detection |
+| 4. Runtime | Anti-debug + VM detect | Dynamic analysis |
+| 5. Memory | electron-safe-storage | Secrets exposure |
+| 6. Network | TLS 1.3 + cert pinning | MITM attacks |
+| 7. API | HMAC-SHA256 signing | Replay attacks |
+| 8. Auth | JWT + short expiry | Session hijacking |
+| 9. Build | SBOM + audit | Supply chain |
+
+
+9. RECOMMENDED TOOLS
+====================
+
+| Purpose | Tool | Cost |
+|---------|------|------|
+| Obfuscation | javascript-obfuscator | Free |
+| Native addons | node-gyp + N-API | Free |
+| Code signing | DigiCert EV | $699/year |
+| VMProtect | VMProtect Software | $399+ |
+| Dependency audit | npm audit | Free |
+| SAST | Semgrep | Free tier |
+
+
+10. CRITICAL: WHAT NOT TO DO
+============================
+
+❌ Never:
+- Store API keys in source code (use secure storage)
+- Disable contextIsolation (security risk)
+- Allow eval() or new Function() (code injection)
+- Trust renderer process for security decisions
+- Use http:// in production (always https:// or wss://)
+- Bundle dev tools in production build
+
+✅ Always:
+- Enable contextIsolation: true
+- Enable sandbox: true
+- Validate all IPC inputs
+- Use preload scripts for controlled API exposure
+- Implement Content Security Policy
+- Sign all executables and updates
+
+
+END OF DOCUMENT
+===============
+Prepared for: Maverick Client secure development
+Target: Broadcast-grade protection against reverse engineering and tampering
