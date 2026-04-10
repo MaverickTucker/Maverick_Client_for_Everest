@@ -1,11 +1,29 @@
 import { app, shell, BrowserWindow, ipcMain } from 'electron'
 import { join } from 'path'
 import { electronApp, optimizer, is } from '@electron-toolkit/utils'
-import icon from '../../resources/icon.png?asset'
 import { enforceSecurity } from './security/anti-debug'
+import { IntegrityCheck } from './security/integrity'
+import { CertificatePinning } from './security/certificate-pinning'
+import { setupSecureIPC } from './ipc/secure-handlers'
 
 // Enforce broadcast security
 enforceSecurity()
+
+if (is.dev) {
+    app.commandLine.appendSwitch('ignore-certificate-errors')
+}
+
+// Verify app integrity
+if (!IntegrityCheck.verify()) {
+    console.error('Integrity check failed - exiting')
+    app.quit()
+}
+
+// Setup certificate pinning
+CertificatePinning.setupPinning()
+
+// Setup secure IPC handlers
+setupSecureIPC()
 
 function createWindow(): void {
     // Create the browser window.
@@ -14,10 +32,11 @@ function createWindow(): void {
         height: 800,
         show: false,
         autoHideMenuBar: true,
-        ...(process.platform === 'linux' ? { icon } : {}),
         webPreferences: {
-            preload: join(__dirname, '../preload/index.js'),
-            sandbox: false
+            preload: join(__dirname, '../preload/index.mjs'),
+            sandbox: false,
+            contextIsolation: true,
+            nodeIntegration: false
         }
     })
 
@@ -55,6 +74,30 @@ app.whenReady().then(() => {
 
     // IPC test
     ipcMain.on('ping', () => console.log('pong'))
+
+    // Bypass CORS for local MRS connections in development
+    if (is.dev) {
+        const { session } = require('electron')
+        session.defaultSession.webRequest.onHeadersReceived((details, callback) => {
+            const corsHeaders = {
+                'Access-Control-Allow-Origin': ['*'],
+                'Access-Control-Allow-Methods': ['GET, POST, PUT, DELETE, OPTIONS'],
+                'Access-Control-Allow-Headers': ['*']
+            }
+
+            const lowerUrl = details.url.toLowerCase()
+            if (lowerUrl.includes('127.0.0.1') || lowerUrl.includes('localhost') || lowerUrl.includes('0.0.0.0')) {
+                callback({
+                    responseHeaders: {
+                        ...details.responseHeaders,
+                        ...corsHeaders
+                    }
+                })
+            } else {
+                callback({ responseHeaders: details.responseHeaders })
+            }
+        })
+    }
 
     createWindow()
 

@@ -19,11 +19,11 @@ export class SecureStorage {
 
     static saveConfig(key: string, value: string): void {
         const encrypted = this.encrypt(value)
-        store.set(`secure.${key}`, encrypted)
+            ; (store as any).set(`secure.${key}`, encrypted)
     }
 
     static getConfig(key: string): string | undefined {
-        const encrypted = store.get(`secure.${key}`) as string
+        const encrypted = (store as any).get(`secure.${key}`) as string
         if (!encrypted) return undefined
         return this.decrypt(encrypted)
     }

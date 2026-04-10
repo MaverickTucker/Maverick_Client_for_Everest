@@ -4,6 +4,9 @@
         "allowJs": true,
         "skipLibCheck": true,
         "baseUrl": ".",
+        "jsx": "react-jsx",
+        "jsxImportSource": "react",
+        "types": ["react", "react-dom", "node"],
         "paths": {
             "@renderer/*": [
                 "src/renderer/*"

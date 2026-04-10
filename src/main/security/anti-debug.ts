@@ -5,7 +5,8 @@ export function checkDebugger(): boolean {
     if (process.env.NODE_ENV === 'development') return false
 
     // check if debug port is open or other flags
-    const isDebug = process.spawnargs.some((arg) => arg.includes('--inspect') || arg.includes('--remote-debugging-port'))
+    const args = (process as any).spawnargs || []
+    const isDebug = args.some((arg: string) => arg.includes('--inspect') || arg.includes('--remote-debugging-port'))
 
     return isDebug
 }
