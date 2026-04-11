@@ -63,6 +63,7 @@ Engine-agnostic structural definitions.
 ### 📺 Channels
 - **Create/List**: `POST|GET /api/channels?profile_id={id}`
 - **Get/Update/Delete**: `GET|PUT|DELETE /api/channels/{id}`
+- **Update Role**: `PATCH /api/channels/{id}/role?role={PGM|PVW|NONE}` (Playout assignment)
 - **List Mapped Engines**: `GET /api/channels/{id}/engines`
 - **Add/Remove Engine**: `POST|DELETE /api/channels/{id}/engines/{engine_id}`
 
@@ -132,6 +133,7 @@ Convenience endpoints for rapid manual control using element/template names inst
 
 ## 📈 7. Monitoring & Health
 - **Engine Status**: `GET /api/engines` (Includes `current_scene` JSON mapping for layers 1-6)
+- **Engine Real-time WS**: `WS /api/ws/engines` (Pushes `INITIAL_STATE` and `STATUS_CHANGE` events)
 - **Prometheus Metrics**: `GET /metrics` (Includes `mrs_playout_latency_seconds`)
 
 ---
