@@ -17,16 +17,22 @@ export interface SceneInfo {
     directors?: any[]
 }
 
-export function useTemplateDetails(templateId: string | null) {
+export function useTemplateDetails(showId: string | null, templateId: string | null, path: string | null) {
     return useQuery<SceneInfo>({
-        queryKey: ['template-details', templateId],
+        queryKey: ['template-details', showId, templateId, path],
         queryFn: async () => {
-            if (!templateId) throw new Error('No template selected')
-            const response = await secureAxios.get(`/api/templates/${templateId}/scene-info`)
+            if (!showId || !templateId || !path) throw new Error('Missing parameters for template details')
+
+            // New hierarchical POST endpoint with path in body
+            const response = await secureAxios.post(`/api/shows/${showId}/templates/${templateId}/scene-info`, {
+                path: path
+            })
+
             console.log('[useTemplateDetails] Raw Data:', response.data)
 
             let data = response.data
-            // The MRS usually returns { tags: [...] } directly or wrapped in scene_info
+            // Handle common MRS response wrappers: { data: ... } or { scene_info: ... }
+            if (data.data) data = data.data
             if (data.scene_info) data = data.scene_info
 
             // Normalize: Ensure each tag has a 'tag' property (mapping tag_id -> tag)
@@ -39,7 +45,7 @@ export function useTemplateDetails(templateId: string | null) {
 
             return data
         },
-        enabled: !!templateId,
+        enabled: !!showId && !!templateId && !!path,
         staleTime: 60000 // Cache for 1 minute
     })
 }

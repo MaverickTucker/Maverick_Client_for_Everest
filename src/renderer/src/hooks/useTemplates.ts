@@ -15,9 +15,7 @@ export function useTemplates(showId: string | null) {
         queryFn: async () => {
             if (!showId) return []
             console.log(`[useTemplates] Fetching for Show ID: ${showId}`)
-            const response = await secureAxios.get('/api/templates', {
-                params: { show_id: showId }
-            })
+            const response = await secureAxios.get(`/api/shows/${showId}/templates`)
             console.log('[useTemplates] Raw Response:', response.data)
 
             // Handle both direct array and wrapped { data: [] } formats

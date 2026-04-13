@@ -14,9 +14,7 @@ export function useElements(showId: string | null) {
         queryFn: async () => {
             if (!showId) return []
             console.log(`[useElements] Fetching for Show ID: ${showId}`)
-            const response = await secureAxios.get('/api/elements', {
-                params: { show_id: showId }
-            })
+            const response = await secureAxios.get(`/api/shows/${showId}/elements`)
             console.log('[useElements] Raw Response:', response.data)
 
             // Handle both direct array and wrapped { data: [] } formats

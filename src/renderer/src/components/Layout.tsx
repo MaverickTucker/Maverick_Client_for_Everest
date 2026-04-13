@@ -6,7 +6,7 @@ import { useTemplates } from '../hooks/useTemplates'
 import { useElements } from '../hooks/useElements'
 import { useTemplateDetails } from '../hooks/useTemplateDetails'
 import { Loader2, Box, Layers } from 'lucide-react'
-import { useState, useEffect } from 'react'
+import { useEffect } from 'react'
 import { StatusBar } from './StatusBar'
 
 function ResizeHandle() {
@@ -16,26 +16,47 @@ function ResizeHandle() {
 }
 
 export function Layout() {
-  const { activeShowId, activeShowName } = useShowStore()
-  const { selectedTemplateId, setSelectedTemplateId, selectedElementId, setSelectedElementId } = useSelectionStore()
+  const { activeShowId } = useShowStore()
+  const {
+    selectedTemplateId,
+    setSelectedTemplateId,
+    selectedElementId,
+    setSelectedElementId,
+    fieldValues,
+    setFieldValues,
+    updateField
+  } = useSelectionStore()
 
   const { data: templates, isLoading: templatesLoading } = useTemplates(activeShowId)
   const { data: elements, isLoading: elementsLoading } = useElements(activeShowId)
 
-  const { data: templateDetails, isLoading: detailsLoading } = useTemplateDetails(selectedTemplateId)
+  // Find the selected template to get its path for the scene-info call
+  const selectedTemplate = templates?.find(t => t.id === selectedTemplateId)
 
-  const [fieldValues, setFieldValues] = useState<Record<string, string>>({})
+  // If we have a selectedTemplateId but can't find it in the list (e.g. show changed), clear it
+  useEffect(() => {
+    if (selectedTemplateId && templates && !selectedTemplate) {
+      setSelectedTemplateId(null)
+    }
+  }, [selectedTemplateId, templates, selectedTemplate, setSelectedTemplateId])
+
+  const { data: templateDetails, isLoading: detailsLoading } = useTemplateDetails(
+    activeShowId,
+    selectedTemplateId,
+    selectedTemplate?.path || null
+  )
 
   // Handle template details loading
   useEffect(() => {
     if (selectedTemplateId && templateDetails?.tags) {
       const initial: Record<string, string> = {}
       templateDetails.tags.forEach(tag => {
-        initial[tag.tag] = tag.default || ''
+        const key = tag.tag || tag.tag_id
+        initial[key] = tag.default || ''
       })
       setFieldValues(initial)
     }
-  }, [selectedTemplateId, templateDetails])
+  }, [selectedTemplateId, templateDetails, setFieldValues])
 
   // Handle element selection - load saved data
   useEffect(() => {
@@ -45,15 +66,15 @@ export function Layout() {
         // Ensure all values are strings for the inputs
         const currentData: Record<string, string> = {}
         Object.keys(element.data).forEach(key => {
-          currentData[key] = String(element.data[key])
+          currentData[key] = String((element.data as Record<string, any>)[key])
         })
         setFieldValues(currentData)
       }
     }
-  }, [selectedElementId, elements])
+  }, [selectedElementId, elements, setFieldValues])
 
   const handleFieldChange = (tag: string, value: string) => {
-    setFieldValues(prev => ({ ...prev, [tag]: value }))
+    updateField(tag, value)
   }
 
 
@@ -83,7 +104,6 @@ export function Layout() {
                         <Layers size={14} className="text-mint-green" />
                         Templates
                       </h3>
-                      <span style={{ fontSize: '10px', color: 'var(--glacier-300)', textTransform: 'uppercase', letterSpacing: '0.05em' }}>{activeShowName}</span>
                     </div>
                     <div style={{ flex: 1, overflow: 'auto', padding: '12px', display: 'flex', flexDirection: 'column', gap: '4px' }}>
                       {templatesLoading ? (
