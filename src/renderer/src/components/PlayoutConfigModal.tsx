@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useRef } from 'react'
 import { X, Plus, Trash2, Monitor, Tv, User, Check } from 'lucide-react'
 import { useConfigStore } from '../stores/configStore'
 import { secureAxios } from '../api/secure-axios'
@@ -36,6 +36,14 @@ export function PlayoutConfigModal({ isOpen, onClose }: PlayoutConfigModalProps)
     const [isAddingEngine, setIsAddingEngine] = useState(false)
     const [newEngineHost, setNewEngineHost] = useState('')
     const [newEnginePort, setNewEnginePort] = useState(1980)
+    const engineHostRef = useRef<HTMLInputElement>(null)
+
+    useEffect(() => {
+        if (isAddingEngine) {
+            // setTimeout ensures Electron's renderer has committed the DOM node
+            setTimeout(() => engineHostRef.current?.focus(), 50)
+        }
+    }, [isAddingEngine])
 
     useEffect(() => {
         if (selectedProfileId) {
@@ -56,10 +64,14 @@ export function PlayoutConfigModal({ isOpen, onClose }: PlayoutConfigModalProps)
             return
         }
         try {
-            await secureAxios.post('/api/profiles', { name: editingProfileName })
+            const res = await secureAxios.post<{ id: string }>('/api/profiles', { name: editingProfileName })
             setEditingProfileName('')
             setIsAddingProfile(false)
-            fetchProfiles()
+            await fetchProfiles()
+            // Auto-select the newly created profile
+            if (res.data?.id) {
+                setSelectedProfileId(res.data.id)
+            }
         } catch (e) {
             console.error(e)
         }
@@ -319,8 +331,14 @@ export function PlayoutConfigModal({ isOpen, onClose }: PlayoutConfigModalProps)
                                 <Tv size={14} /> Channels
                             </h3>
                             <button
-                                onClick={() => setIsAddingChannel(true)}
-                                style={{ background: 'transparent', border: 'none', color: 'var(--mint-green)', cursor: 'pointer' }}
+                                onClick={() => selectedProfileId && setIsAddingChannel(true)}
+                                title={!selectedProfileId ? 'Select a profile first' : 'Add channel'}
+                                style={{
+                                    background: 'transparent', border: 'none', cursor: selectedProfileId ? 'pointer' : 'not-allowed',
+                                    color: selectedProfileId ? 'var(--mint-green)' : 'var(--glacier-600)',
+                                    opacity: selectedProfileId ? 1 : 0.5,
+                                    transition: 'all 0.2s'
+                                }}
                             >
                                 <Plus size={18} />
                             </button>
@@ -462,11 +480,16 @@ export function PlayoutConfigModal({ isOpen, onClose }: PlayoutConfigModalProps)
                             {isAddingEngine && (
                                 <div style={{ padding: '12px', backgroundColor: 'var(--glacier-950)', border: '1px solid var(--mint-green)', borderRadius: '6px', display: 'flex', flexDirection: 'column', gap: '8px' }}>
                                     <input
-                                        autoFocus
+                                        ref={engineHostRef}
                                         value={newEngineHost}
                                         onChange={(e) => setNewEngineHost(e.target.value)}
+                                        onKeyDown={(e) => {
+                                            if (e.key === 'Enter') handleAddEngine()
+                                            if (e.key === 'Escape') { setIsAddingEngine(false); setNewEngineHost(''); setNewEnginePort(1980); }
+                                        }}
+                                        onBlur={() => { if (!newEngineHost.trim()) { setIsAddingEngine(false); setNewEnginePort(1980); } }}
                                         placeholder="Hostname / IP"
-                                        style={{ backgroundColor: 'var(--glacier-900)', border: '1px solid var(--glacier-700)', color: '#fff', padding: '6px 10px', borderRadius: '4px', fontSize: '13px' }}
+                                        style={{ width: '100%', backgroundColor: 'var(--glacier-900)', border: '1px solid var(--glacier-700)', color: '#fff', padding: '6px 10px', borderRadius: '4px', fontSize: '13px', boxSizing: 'border-box' }}
                                     />
                                     <div style={{ display: 'flex', gap: '8px' }}>
                                         <input

@@ -22,8 +22,7 @@ if (!IntegrityCheck.verify()) {
 // Setup certificate pinning
 CertificatePinning.setupPinning()
 
-// Setup secure IPC handlers
-setupSecureIPC()
+// createWindow will be called in app.whenReady
 
 function createWindow(): void {
     // Create the browser window.
@@ -81,7 +80,7 @@ app.whenReady().then(() => {
         session.defaultSession.webRequest.onHeadersReceived((details, callback) => {
             const corsHeaders = {
                 'Access-Control-Allow-Origin': ['*'],
-                'Access-Control-Allow-Methods': ['GET, POST, PUT, DELETE, OPTIONS'],
+                'Access-Control-Allow-Methods': ['GET, POST, PUT, DELETE, PATCH, OPTIONS'],
                 'Access-Control-Allow-Headers': ['*']
             }
 
@@ -98,6 +97,9 @@ app.whenReady().then(() => {
             }
         })
     }
+
+    // Setup secure IPC handlers after ready
+    setupSecureIPC()
 
     createWindow()
 

@@ -24,7 +24,7 @@ async function generateHmacSha256(secret: string, payload: string): Promise<stri
 */
 
 export const secureAxios: AxiosInstance = axios.create({
-    timeout: 5000,
+    timeout: 60000,
     headers: {
         'Content-Type': 'application/json'
     }
@@ -45,7 +45,8 @@ secureAxios.interceptors.request.use(async (config: InternalAxiosRequestConfig) 
 
     // Dynamically set baseURL from connectionStore
     const { host, port } = useConnectionStore.getState()
-    const url = `http://${host}:${port}`
+    const normalizedHost = host.toLowerCase()
+    const url = `http://${normalizedHost}:${port}`
     config.baseURL = url
 
     const paramsStr = config.params ? `?${new URLSearchParams(config.params).toString()}` : ''

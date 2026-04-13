@@ -12,17 +12,12 @@ export function StatusBar() {
         setSelectedProfileId,
         fetchProfiles,
         fetchChannels,
-        fetchMappings,
         initializeEngineWS
     } = useConfigStore()
 
     useEffect(() => {
         fetchProfiles()
         initializeEngineWS()
-        const interval = setInterval(() => {
-            fetchMappings()
-        }, 5000)
-        return () => clearInterval(interval)
     }, [])
 
     useEffect(() => {
@@ -101,7 +96,7 @@ export function StatusBar() {
                                 const mappedIds = mappings[ch.id] || []
                                 const colors = mappedIds.length > 0
                                     ? mappedIds.map(id => {
-                                        const eng = engines.find(e => e.id === id)
+                                        const eng = (engines || []).find(e => e.id === id)
                                         return eng?.status === 'ONLINE' ? '#22c55e' : (eng?.status === 'OFFLINE' ? '#ef4444' : 'var(--glacier-700)')
                                     })
                                     : ['var(--glacier-700)']

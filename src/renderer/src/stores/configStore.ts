@@ -91,7 +91,11 @@ export const useConfigStore = create<ConfigState>()(
             fetchEngines: async () => {
                 try {
                     const response = await secureAxios.get<Engine[]>('/api/engines')
-                    set({ engines: response.data })
+                    const normalized = (response.data || []).map(e => ({
+                        ...e,
+                        status: e.status ? e.status.toUpperCase() : undefined
+                    }))
+                    set({ engines: normalized })
                 } catch (error) {
                     console.error('Failed to fetch engines:', error)
                 }
@@ -136,14 +140,18 @@ export const useConfigStore = create<ConfigState>()(
                     try {
                         const message = JSON.parse(event.data)
                         if (message.type === 'INITIAL_STATE') {
-                            console.log('[WS Engines] Initial state received:', message.data)
-                            set({ engines: message.data })
-                        } else if (message.type === 'STATUS_CHANGE') {
-                            console.log('[WS Engines] Status change:', message.data)
-                            const update = message.data
+                            console.log('[WS Engines] Initial state received:', message.engines)
+                            const normalized = (message.engines || []).map((e: Engine) => ({
+                                ...e,
+                                status: e.status ? e.status.toUpperCase() : undefined
+                            }))
+                            set({ engines: normalized })
+                        } else if (message.event === 'engine_state_change') {
+                            console.log('[WS Engines] Status change:', message)
+                            const newStatus = message.state ? String(message.state).toUpperCase() : undefined
                             set((state) => ({
-                                engines: state.engines.map(e =>
-                                    e.id === update.id ? { ...e, status: update.status } : e
+                                engines: (state.engines || []).map(e =>
+                                    e.id === message.engine_id ? { ...e, status: newStatus } : e
                                 )
                             }))
                         }

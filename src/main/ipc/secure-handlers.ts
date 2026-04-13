@@ -7,7 +7,8 @@ const ALLOWED_CHANNELS = {
     'config:set': true,
     'hardware:button': true,
     'playout:take': true,
-    'playout:out': true
+    'playout:out': true,
+    'dialog:openFile': true
 }
 
 // Validate IPC channel access
@@ -24,6 +25,7 @@ function validateMessage(message: any): boolean {
 }
 
 export function setupSecureIPC(): void {
+    console.log('[Main] Setting up secure IPC handlers...')
     // Config get handler
     ipcMain.handle('config:get', (_event: IpcMainInvokeEvent, key: string) => {
         if (!validateChannel('config:get')) {
@@ -118,5 +120,35 @@ export function setupSecureIPC(): void {
 
         console.log('Playout out:', params)
         return { success: true, timestamp: Date.now() }
+    })
+
+    // Dialog open file handler
+    console.log('[Main] Registering dialog:openFile handler')
+    ipcMain.handle('dialog:openFile', async (_event: IpcMainInvokeEvent) => {
+        if (!validateChannel('dialog:openFile')) {
+            throw new Error('Unauthorized channel')
+        }
+
+        const { dialog, BrowserWindow } = require('electron')
+        const focusedWindow = BrowserWindow.getFocusedWindow()
+
+        if (!focusedWindow) {
+            throw new Error('No focused window')
+        }
+
+        const result = await dialog.showOpenDialog(focusedWindow, {
+            title: 'Import Everest Scene',
+            properties: ['openFile', 'multiSelections'],
+            filters: [
+                { name: 'Everest Scene', extensions: ['sum'] },
+                { name: 'All Files', extensions: ['*'] }
+            ]
+        })
+
+        if (result.canceled || result.filePaths.length === 0) {
+            return []
+        }
+
+        return result.filePaths
     })
 }

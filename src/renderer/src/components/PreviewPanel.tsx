@@ -12,7 +12,7 @@ export function PreviewPanel({ isCollapsed, onToggle }: PreviewPanelProps) {
       isCollapsed={isCollapsed}
       onToggle={onToggle}
     >
-      <div className="p-4 text-zinc-400 text-sm">
+      <div className="p-4 text-glacier-300 text-sm">
         <p>Preview will appear here</p>
       </div>
     </CollapsiblePanel>

@@ -59,23 +59,23 @@ export function ShowsDialog({ isOpen, onClose }: ShowsDialogProps) {
         >
             <div
                 style={{
-                    width: '400px', backgroundColor: '#18181b', border: '1px solid #3f3f46',
+                    width: '400px', backgroundColor: 'var(--glacier-800)', border: '1px solid var(--glacier-700)',
                     borderRadius: '8px', boxShadow: '0 10px 15px -3px rgba(0, 0, 0, 0.5)',
                     overflow: 'hidden', display: 'flex', flexDirection: 'column'
                 }}
                 onClick={handleContentClick}
             >
                 {/* Header */}
-                <div style={{ backgroundColor: '#09090b', padding: '16px', borderBottom: '1px solid #3f3f46', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                    <h2 style={{ margin: 0, fontSize: '18px', fontWeight: 600, color: '#fafafa', display: 'flex', alignItems: 'center', gap: '8px' }}>
+                <div style={{ backgroundColor: 'var(--glacier-950)', padding: '16px', borderBottom: '1px solid var(--glacier-700)', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                    <h2 style={{ margin: 0, fontSize: '18px', fontWeight: 600, color: 'var(--glacier-50)', display: 'flex', alignItems: 'center', gap: '8px' }}>
                         Shows
                         <button
                             onClick={() => {
                                 setIsCreating(true)
                                 setNewShowName('')
                             }}
-                            style={{ background: 'transparent', border: 'none', color: '#10b981', cursor: 'pointer', padding: '4px', display: 'flex', alignItems: 'center', borderRadius: '4px' }}
-                            onMouseEnter={(e) => e.currentTarget.style.backgroundColor = '#27272a'}
+                            style={{ background: 'transparent', border: 'none', color: 'var(--mint-green)', cursor: 'pointer', padding: '4px', display: 'flex', alignItems: 'center', borderRadius: '4px' }}
+                            onMouseEnter={(e) => e.currentTarget.style.backgroundColor = 'var(--glacier-600)'}
                             onMouseLeave={(e) => e.currentTarget.style.backgroundColor = 'transparent'}
                             title="Add Show"
                         >
@@ -84,9 +84,9 @@ export function ShowsDialog({ isOpen, onClose }: ShowsDialogProps) {
                     </h2>
                     <button
                         onClick={onClose}
-                        style={{ background: 'transparent', border: 'none', color: '#a1a1aa', cursor: 'pointer', padding: '4px', display: 'flex', alignItems: 'center', borderRadius: '4px' }}
-                        onMouseEnter={(e) => e.currentTarget.style.color = '#fafafa'}
-                        onMouseLeave={(e) => e.currentTarget.style.color = '#a1a1aa'}
+                        style={{ background: 'transparent', border: 'none', color: 'var(--glacier-300)', cursor: 'pointer', padding: '4px', display: 'flex', alignItems: 'center', borderRadius: '4px' }}
+                        onMouseEnter={(e) => e.currentTarget.style.color = 'var(--glacier-50)'}
+                        onMouseLeave={(e) => e.currentTarget.style.color = 'var(--glacier-300)'}
                     >
                         <X size={18} />
                     </button>
@@ -96,7 +96,7 @@ export function ShowsDialog({ isOpen, onClose }: ShowsDialogProps) {
                 <div style={{ padding: '16px', display: 'flex', flexDirection: 'column', gap: '8px', maxHeight: '400px', overflowY: 'auto' }}>
 
                     {isLoading && (
-                        <div style={{ display: 'flex', justifyContent: 'center', padding: '24px 0', color: '#10b981' }}>
+                        <div style={{ display: 'flex', justifyContent: 'center', padding: '24px 0', color: 'var(--mint-green)' }}>
                             <Loader2 className="animate-spin" size={24} />
                         </div>
                     )}
@@ -110,8 +110,8 @@ export function ShowsDialog({ isOpen, onClose }: ShowsDialogProps) {
 
                     {isCreating && (
                         <div style={{
-                            padding: '8px 12px', backgroundColor: '#27272a', border: '1px solid #10b981',
-                            borderRadius: '6px', color: '#e4e4e7', display: 'flex', alignItems: 'center', gap: '8px'
+                            padding: '8px 12px', backgroundColor: 'var(--glacier-900)', border: '1px solid var(--mint-green)',
+                            borderRadius: '6px', color: 'var(--glacier-50)', display: 'flex', alignItems: 'center', gap: '8px'
                         }}>
                             <input
                                 autoFocus
@@ -127,13 +127,13 @@ export function ShowsDialog({ isOpen, onClose }: ShowsDialogProps) {
                             <button
                                 onClick={handleCreate}
                                 disabled={createShow.isPending}
-                                style={{ background: 'transparent', border: 'none', color: '#10b981', cursor: 'pointer', padding: '4px' }}
+                                style={{ background: 'transparent', border: 'none', color: 'var(--mint-green)', cursor: 'pointer', padding: '4px' }}
                             >
                                 {createShow.isPending ? <Loader2 className="animate-spin" size={16} /> : <Check size={16} />}
                             </button>
                             <button
                                 onClick={() => setIsCreating(false)}
-                                style={{ background: 'transparent', border: 'none', color: '#a1a1aa', cursor: 'pointer', padding: '4px' }}
+                                style={{ background: 'transparent', border: 'none', color: 'var(--glacier-300)', cursor: 'pointer', padding: '4px' }}
                             >
                                 <X size={16} />
                             </button>
@@ -152,14 +152,14 @@ export function ShowsDialog({ isOpen, onClose }: ShowsDialogProps) {
                             onClick={() => handleSelectShow(show)}
                             style={{
                                 padding: '8px 12px',
-                                backgroundColor: activeShowId === show.id ? '#10b98122' : '#27272a',
+                                backgroundColor: activeShowId === show.id ? 'rgba(52, 211, 153, 0.1)' : 'var(--glacier-900)',
                                 border: '1px solid',
-                                borderColor: activeShowId === show.id ? '#10b981' : '#3f3f46',
-                                borderRadius: '6px', color: '#e4e4e7', transition: 'all 0.2s', display: 'flex', alignItems: 'center', justifyContent: 'space-between',
+                                borderColor: activeShowId === show.id ? 'var(--mint-green)' : 'var(--glacier-700)',
+                                borderRadius: '6px', color: 'var(--glacier-50)', transition: 'all 0.2s', display: 'flex', alignItems: 'center', justifyContent: 'space-between',
                                 cursor: 'pointer'
                             }}
-                            onMouseEnter={(e) => { if (activeShowId !== show.id) e.currentTarget.style.borderColor = '#10b981' }}
-                            onMouseLeave={(e) => { if (activeShowId !== show.id) e.currentTarget.style.borderColor = '#3f3f46' }}
+                            onMouseEnter={(e) => { if (activeShowId !== show.id) e.currentTarget.style.borderColor = 'var(--mint-green)' }}
+                            onMouseLeave={(e) => { if (activeShowId !== show.id) e.currentTarget.style.borderColor = 'var(--glacier-700)' }}
                         >
                             {editingId === show.id ? (
                                 <div onClick={(e) => e.stopPropagation()} style={{ flex: 1, display: 'flex', alignItems: 'center' }}>
@@ -177,13 +177,13 @@ export function ShowsDialog({ isOpen, onClose }: ShowsDialogProps) {
                                         <button
                                             onClick={() => handleSaveEdit(show)}
                                             disabled={updateShow.isPending}
-                                            style={{ background: 'transparent', border: 'none', color: '#10b981', cursor: 'pointer', padding: '4px' }}
+                                            style={{ background: 'transparent', border: 'none', color: 'var(--mint-green)', cursor: 'pointer', padding: '4px' }}
                                         >
                                             {updateShow.isPending ? <Loader2 className="animate-spin" size={16} /> : <Check size={16} />}
                                         </button>
                                         <button
                                             onClick={() => setEditingId(null)}
-                                            style={{ background: 'transparent', border: 'none', color: '#a1a1aa', cursor: 'pointer', padding: '4px' }}
+                                            style={{ background: 'transparent', border: 'none', color: 'var(--glacier-300)', cursor: 'pointer', padding: '4px' }}
                                         >
                                             <X size={16} />
                                         </button>
@@ -193,7 +193,7 @@ export function ShowsDialog({ isOpen, onClose }: ShowsDialogProps) {
                                 <>
                                     <span style={{ fontSize: '14px', fontWeight: activeShowId === show.id ? 600 : 400 }}>
                                         {show.name}
-                                        {activeShowId === show.id && <span style={{ marginLeft: '8px', fontSize: '10px', color: '#10b981', verticalAlign: 'middle' }}>(ACTIVE)</span>}
+                                        {activeShowId === show.id && <span style={{ marginLeft: '8px', fontSize: '10px', color: 'var(--mint-green)', verticalAlign: 'middle' }}>(ACTIVE)</span>}
                                     </span>
                                     <div style={{ display: 'flex', gap: '4px' }}>
                                         <button
@@ -202,9 +202,9 @@ export function ShowsDialog({ isOpen, onClose }: ShowsDialogProps) {
                                                 setEditingId(show.id)
                                                 setEditShowName(show.name)
                                             }}
-                                            style={{ background: 'transparent', border: 'none', color: '#a1a1aa', cursor: 'pointer', padding: '4px' }}
+                                            style={{ background: 'transparent', border: 'none', color: 'var(--glacier-300)', cursor: 'pointer', padding: '4px' }}
                                             onMouseEnter={(e) => e.currentTarget.style.color = '#3b82f6'}
-                                            onMouseLeave={(e) => e.currentTarget.style.color = '#a1a1aa'}
+                                            onMouseLeave={(e) => e.currentTarget.style.color = 'var(--glacier-300)'}
                                             title="Edit"
                                         >
                                             <Edit2 size={14} />
@@ -215,9 +215,9 @@ export function ShowsDialog({ isOpen, onClose }: ShowsDialogProps) {
                                                 handleDelete(show.id)
                                             }}
                                             disabled={deleteShow.isPending}
-                                            style={{ background: 'transparent', border: 'none', color: '#a1a1aa', cursor: 'pointer', padding: '4px' }}
+                                            style={{ background: 'transparent', border: 'none', color: 'var(--glacier-300)', cursor: 'pointer', padding: '4px' }}
                                             onMouseEnter={(e) => e.currentTarget.style.color = '#ef4444'}
-                                            onMouseLeave={(e) => e.currentTarget.style.color = '#a1a1aa'}
+                                            onMouseLeave={(e) => e.currentTarget.style.color = 'var(--glacier-300)'}
                                             title="Delete"
                                         >
                                             {deleteShow.isPending ? <Loader2 className="animate-spin" size={14} /> : <Trash2 size={14} />}

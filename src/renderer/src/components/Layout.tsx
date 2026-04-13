@@ -7,10 +7,11 @@ import { useElements } from '../hooks/useElements'
 import { useTemplateDetails } from '../hooks/useTemplateDetails'
 import { Loader2, Box, Layers } from 'lucide-react'
 import { useState, useEffect } from 'react'
+import { StatusBar } from './StatusBar'
 
 function ResizeHandle() {
   return (
-    <PanelResizeHandle className="hover:bg-[#10b981] transition-colors duration-200" />
+    <PanelResizeHandle className="hover:bg-mint-green transition-colors duration-200" />
   )
 }
 
@@ -57,13 +58,13 @@ export function Layout() {
 
 
   return (
-    <div style={{ display: 'flex', flexDirection: 'column', height: '100vh', width: '100vw', backgroundColor: '#18181b', color: '#fafafa' }}>
+    <div className="bg-glacier-texture" style={{ display: 'flex', flexDirection: 'column', height: '100vh', width: '100vw', backgroundColor: 'var(--glacier-400)', color: 'var(--glacier-50)' }}>
       <Menu />
 
       {!activeShowId ? (
-        <div style={{ flex: 1, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', backgroundColor: '#09090b', color: '#71717a' }}>
+        <div style={{ flex: 1, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', backgroundColor: 'var(--glacier-950)', color: 'var(--glacier-300)' }}>
           <Box size={48} strokeWidth={1} style={{ marginBottom: '16px', opacity: 0.5 }} />
-          <h2 style={{ fontSize: '18px', fontWeight: 500, margin: '0 0 8px 0', color: '#a1a1aa' }}>Ready to Broadcast</h2>
+          <h2 style={{ fontSize: '18px', fontWeight: 500, margin: '0 0 8px 0', color: 'var(--glacier-200)' }}>Ready to Broadcast</h2>
           <p style={{ margin: 0, fontSize: '14px' }}>Please select a show from the <b>Shows</b> menu to begin.</p>
         </div>
       ) : (
@@ -76,13 +77,13 @@ export function Layout() {
 
                 {/* Templates */}
                 <Panel defaultSize={50} minSize={20}>
-                  <div style={{ height: 'calc(100% - 8px)', overflow: 'hidden', backgroundColor: '#27272a', border: '1px solid #3f3f46', margin: '4px', borderRadius: '4px', display: 'flex', flexDirection: 'column' }}>
-                    <div style={{ backgroundColor: '#09090b', padding: '8px 16px', borderBottom: '1px solid #3f3f46', flexShrink: 0, display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                  <div style={{ height: 'calc(100% - 8px)', overflow: 'hidden', backgroundColor: 'rgba(49, 72, 89, 0.85)', backdropFilter: 'blur(4px)', border: '1px solid var(--glacier-700)', margin: '4px', borderRadius: '4px', display: 'flex', flexDirection: 'column' }}>
+                    <div style={{ backgroundColor: 'var(--glacier-950)', padding: '8px 16px', borderBottom: '1px solid var(--glacier-700)', flexShrink: 0, display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                       <h3 style={{ margin: 0, fontSize: '14px', fontWeight: 600, display: 'flex', alignItems: 'center', gap: '8px' }}>
-                        <Layers size={14} className="text-[#10b981]" />
+                        <Layers size={14} className="text-mint-green" />
                         Templates
                       </h3>
-                      <span style={{ fontSize: '10px', color: '#71717a', textTransform: 'uppercase', letterSpacing: '0.05em' }}>{activeShowName}</span>
+                      <span style={{ fontSize: '10px', color: 'var(--glacier-300)', textTransform: 'uppercase', letterSpacing: '0.05em' }}>{activeShowName}</span>
                     </div>
                     <div style={{ flex: 1, overflow: 'auto', padding: '12px', display: 'flex', flexDirection: 'column', gap: '4px' }}>
                       {templatesLoading ? (
@@ -96,10 +97,10 @@ export function Layout() {
                             onDoubleClick={() => setSelectedTemplateId(t.id)}
                             style={{
                               padding: '8px 12px',
-                              backgroundColor: selectedTemplateId === t.id ? '#10b98122' : '#18181b',
+                              backgroundColor: selectedTemplateId === t.id ? 'rgba(52, 211, 153, 0.1)' : 'var(--glacier-900)',
                               borderRadius: '4px',
                               border: '1px solid',
-                              borderColor: selectedTemplateId === t.id ? '#10b981' : '#3f3f46',
+                              borderColor: selectedTemplateId === t.id ? 'var(--mint-green)' : 'var(--glacier-700)',
                               fontSize: '13px',
                               cursor: 'pointer',
                               display: 'flex',
@@ -107,7 +108,7 @@ export function Layout() {
                               gap: '8px'
                             }}
                           >
-                            <Layers size={14} style={{ color: selectedTemplateId === t.id ? '#10b981' : '#71717a' }} />
+                            <Layers size={14} style={{ color: selectedTemplateId === t.id ? 'var(--mint-green)' : 'var(--glacier-300)' }} />
                             {t.name}
                           </div>
                         ))
@@ -120,8 +121,8 @@ export function Layout() {
 
                 {/* Elements */}
                 <Panel defaultSize={50} minSize={20}>
-                  <div style={{ height: 'calc(100% - 8px)', overflow: 'hidden', backgroundColor: '#27272a', border: '1px solid #3f3f46', margin: '4px', borderRadius: '4px', display: 'flex', flexDirection: 'column' }}>
-                    <div style={{ backgroundColor: '#09090b', padding: '8px 16px', borderBottom: '1px solid #3f3f46', flexShrink: 0 }}>
+                  <div style={{ height: 'calc(100% - 8px)', overflow: 'hidden', backgroundColor: 'rgba(49, 72, 89, 0.85)', backdropFilter: 'blur(4px)', border: '1px solid var(--glacier-700)', margin: '4px', borderRadius: '4px', display: 'flex', flexDirection: 'column' }}>
+                    <div style={{ backgroundColor: 'var(--glacier-950)', padding: '8px 16px', borderBottom: '1px solid var(--glacier-700)', flexShrink: 0 }}>
                       <h3 style={{ margin: 0, fontSize: '14px', fontWeight: 600 }}>Elements</h3>
                     </div>
                     <div style={{ flex: 1, overflow: 'auto', padding: '12px', display: 'flex', flexDirection: 'column', gap: '4px' }}>
@@ -136,10 +137,10 @@ export function Layout() {
                             onDoubleClick={() => setSelectedElementId(e.id)}
                             style={{
                               padding: '8px 12px',
-                              backgroundColor: selectedElementId === e.id ? '#10b98122' : '#18181b',
+                              backgroundColor: selectedElementId === e.id ? 'rgba(52, 211, 153, 0.1)' : 'var(--glacier-900)',
                               borderRadius: '4px',
                               border: '1px solid',
-                              borderColor: selectedElementId === e.id ? '#10b981' : '#3f3f46',
+                              borderColor: selectedElementId === e.id ? 'var(--mint-green)' : 'var(--glacier-700)',
                               fontSize: '13px',
                               cursor: 'pointer',
                               display: 'flex',
@@ -147,7 +148,7 @@ export function Layout() {
                               gap: '8px'
                             }}
                           >
-                            <Box size={14} style={{ color: selectedElementId === e.id ? '#10b981' : '#71717a' }} />
+                            <Box size={14} style={{ color: selectedElementId === e.id ? 'var(--mint-green)' : 'var(--glacier-300)' }} />
                             {e.name}
                           </div>
                         ))
@@ -167,8 +168,8 @@ export function Layout() {
 
                 {/* Field Editor */}
                 <Panel defaultSize={50} minSize={20}>
-                  <div style={{ height: 'calc(100% - 8px)', overflow: 'hidden', backgroundColor: '#27272a', border: '1px solid #3f3f46', margin: '4px', borderRadius: '4px', display: 'flex', flexDirection: 'column' }}>
-                    <div style={{ backgroundColor: '#09090b', padding: '8px 16px', borderBottom: '1px solid #3f3f46', flexShrink: 0, display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                  <div style={{ height: 'calc(100% - 8px)', overflow: 'hidden', backgroundColor: 'rgba(49, 72, 89, 0.85)', backdropFilter: 'blur(4px)', border: '1px solid var(--glacier-700)', margin: '4px', borderRadius: '4px', display: 'flex', flexDirection: 'column' }}>
+                    <div style={{ backgroundColor: 'var(--glacier-950)', padding: '8px 16px', borderBottom: '1px solid var(--glacier-700)', flexShrink: 0, display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                       <h3 style={{ margin: 0, fontSize: '14px', fontWeight: 600 }}>Field Editor</h3>
                       {(selectedTemplateId || selectedElementId) && (
                         <button
@@ -176,7 +177,7 @@ export function Layout() {
                             setSelectedTemplateId(null)
                             setSelectedElementId(null)
                           }}
-                          style={{ background: 'transparent', border: 'none', color: '#71717a', cursor: 'pointer', fontSize: '11px' }}
+                          style={{ background: 'transparent', border: 'none', color: 'var(--glacier-300)', cursor: 'pointer', fontSize: '11px' }}
                         >
                           Clear
                         </button>
@@ -190,20 +191,20 @@ export function Layout() {
                         </div>
                       ) : detailsLoading ? (
                         <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', padding: '40px', gap: '12px' }}>
-                          <Loader2 className="animate-spin text-[#10b981]" size={24} />
-                          <span style={{ fontSize: '12px', color: '#a1a1aa' }}>Loading fields...</span>
+                          <Loader2 className="animate-spin text-mint-green" size={24} />
+                          <span style={{ fontSize: '12px', color: 'var(--glacier-200)' }}>Loading fields...</span>
                         </div>
                       ) : Object.keys(fieldValues).length > 0 ? (
                         Object.keys(fieldValues).map(tag => (
                           <div key={tag} style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
-                            <label style={{ fontSize: '11px', fontWeight: 600, color: '#a1a1aa', textTransform: 'uppercase' }}>{tag}</label>
+                            <label style={{ fontSize: '11px', fontWeight: 600, color: 'var(--glacier-200)', textTransform: 'uppercase' }}>{tag}</label>
                             <input
                               type="text"
                               value={fieldValues[tag] || ''}
                               onChange={(e) => handleFieldChange(tag, e.target.value)}
-                              style={{ backgroundColor: '#18181b', border: '1px solid #3f3f46', borderRadius: '4px', padding: '8px 10px', color: '#fff', fontSize: '13px', outline: 'none' }}
-                              onFocus={(e) => e.target.style.borderColor = '#10b981'}
-                              onBlur={(e) => e.target.style.borderColor = '#3f3f46'}
+                              style={{ backgroundColor: 'var(--glacier-900)', border: '1px solid var(--glacier-700)', borderRadius: '4px', padding: '8px 10px', color: '#fff', fontSize: '13px', outline: 'none' }}
+                              onFocus={(e) => e.target.style.borderColor = 'var(--mint-green)'}
+                              onBlur={(e) => e.target.style.borderColor = 'var(--glacier-700)'}
                             />
                           </div>
                         ))
@@ -218,11 +219,11 @@ export function Layout() {
 
                 {/* Preview */}
                 <Panel defaultSize={50} minSize={20}>
-                  <div style={{ height: 'calc(100% - 8px)', overflow: 'hidden', backgroundColor: '#27272a', border: '1px solid #3f3f46', margin: '4px', borderRadius: '4px', display: 'flex', flexDirection: 'column' }}>
-                    <div style={{ backgroundColor: '#09090b', padding: '8px 16px', borderBottom: '1px solid #3f3f46', flexShrink: 0 }}>
+                  <div style={{ height: 'calc(100% - 8px)', overflow: 'hidden', backgroundColor: 'rgba(49, 72, 89, 0.85)', backdropFilter: 'blur(4px)', border: '1px solid var(--glacier-700)', margin: '4px', borderRadius: '4px', display: 'flex', flexDirection: 'column' }}>
+                    <div style={{ backgroundColor: 'var(--glacier-950)', padding: '8px 16px', borderBottom: '1px solid var(--glacier-700)', flexShrink: 0 }}>
                       <h3 style={{ margin: 0, fontSize: '14px', fontWeight: 600 }}>Preview</h3>
                     </div>
-                    <div style={{ flex: 1, overflow: 'auto', backgroundColor: '#000', margin: '12px', borderRadius: '4px', border: '1px solid #3f3f46', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#3f3f46', fontSize: '12px' }}>
+                    <div style={{ flex: 1, overflow: 'auto', backgroundColor: '#000', margin: '12px', borderRadius: '4px', border: '1px solid var(--glacier-700)', display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'var(--glacier-600)', fontSize: '12px' }}>
                       PREVIEW RENDER
                     </div>
                   </div>
@@ -234,6 +235,7 @@ export function Layout() {
           </PanelGroup>
         </div>
       )}
+      <StatusBar />
     </div>
   )
 }

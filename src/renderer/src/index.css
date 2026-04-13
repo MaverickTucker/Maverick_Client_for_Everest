@@ -1,22 +1,62 @@
 @import "tailwindcss";
 
-* {
-    box-sizing: border-box;
-}
-
 :root {
+    --glacier-50: #f1f8fa;
+    --glacier-100: #ddebf0;
+    --glacier-200: #bed8e3;
+    --glacier-300: #91bccf;
+    --glacier-400: #76a8bf;
+    --glacier-500: #417c99;
+    --glacier-600: #396681;
+    --glacier-700: #33556b;
+    --glacier-800: #314859;
+    --glacier-900: #2c3e4d;
+    --glacier-950: #192733;
+
+    --mint-green: #34d399;
+
     font-family: Inter, system-ui, Avenir, Helvetica, Arial, sans-serif;
     line-height: 1.5;
     font-weight: 400;
 
     color-scheme: dark;
-    color: rgba(255, 255, 255, 0.87);
-    background-color: #09090b;
+    color: var(--glacier-50);
+    background-color: var(--glacier-400);
 
     font-synthesis: none;
     text-rendering: optimizeLegibility;
     -webkit-font-smoothing: antialiased;
     -moz-osx-font-smoothing: grayscale;
+
+    --bg-texture: repeating-linear-gradient(0deg,
+            rgba(25, 39, 51, 0.03) 0px,
+            rgba(25, 39, 51, 0.03) 1px,
+            transparent 1px,
+            transparent 2px);
+}
+
+@theme {
+    --color-glacier-50: var(--glacier-50);
+    --color-glacier-100: var(--glacier-100);
+    --color-glacier-200: var(--glacier-200);
+    --color-glacier-300: var(--glacier-300);
+    --color-glacier-400: var(--glacier-400);
+    --color-glacier-500: var(--glacier-500);
+    --color-glacier-600: var(--glacier-600);
+    --color-glacier-700: var(--glacier-700);
+    --color-glacier-800: var(--glacier-800);
+    --color-glacier-900: var(--glacier-900);
+    --color-glacier-950: var(--glacier-950);
+
+    --color-mint-green: var(--mint-green);
+}
+
+* {
+    box-sizing: border-box;
+}
+
+.bg-glacier-texture {
+    background-image: var(--bg-texture);
 }
 
 html {
@@ -43,12 +83,12 @@ body {
 }
 
 /* react-resizable-panels styles */
-[data-panel-group-direction="horizontal"] > [data-panel-resize-handle-enabled] {
+[data-panel-group-direction="horizontal"]>[data-panel-resize-handle-enabled] {
     width: 4px;
     cursor: col-resize;
 }
 
-[data-panel-group-direction="vertical"] > [data-panel-resize-handle-enabled] {
+[data-panel-group-direction="vertical"]>[data-panel-resize-handle-enabled] {
     height: 4px;
     cursor: row-resize;
 }
