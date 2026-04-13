@@ -1,4 +1,4 @@
-import { app, shell, BrowserWindow, ipcMain } from 'electron'
+import { app, shell, BrowserWindow, ipcMain, Menu } from 'electron'
 import { join } from 'path'
 import { electronApp, optimizer, is } from '@electron-toolkit/utils'
 import { enforceSecurity } from './security/anti-debug'
@@ -24,13 +24,74 @@ CertificatePinning.setupPinning()
 
 // createWindow will be called in app.whenReady
 
+let mainWindow: BrowserWindow | null = null
+
+function updateMenu(activeShowId: string | null) {
+    const template: any[] = [
+        {
+            label: 'File',
+            submenu: [
+                { label: 'Exit', accelerator: 'Alt+F4', click: () => { app.quit() } }
+            ]
+        },
+        {
+            label: 'Tools',
+            submenu: [
+                {
+                    label: 'Manage Shows',
+                    click: () => {
+                        mainWindow?.webContents.send('menu:manage-shows')
+                    }
+                },
+                {
+                    id: 'import-scene',
+                    label: 'Import Scene',
+                    enabled: !!activeShowId,
+                    click: () => {
+                        mainWindow?.webContents.send('menu:import-scene')
+                    }
+                },
+                { type: 'separator' },
+                {
+                    label: 'Settings',
+                    click: () => {
+                        mainWindow?.webContents.send('menu:settings')
+                    }
+                }
+            ]
+        },
+        {
+            label: 'Help',
+            submenu: [
+                {
+                    label: 'Documentation',
+                    accelerator: 'F1',
+                    click: () => {
+                        mainWindow?.webContents.send('menu:documentation')
+                    }
+                },
+                { type: 'separator' },
+                {
+                    label: 'About',
+                    click: () => {
+                        mainWindow?.webContents.send('menu:about')
+                    }
+                }
+            ]
+        }
+    ]
+
+    const menu = Menu.buildFromTemplate(template)
+    Menu.setApplicationMenu(menu)
+}
+
 function createWindow(): void {
     // Create the browser window.
-    const mainWindow = new BrowserWindow({
+    mainWindow = new BrowserWindow({
         width: 1200,
         height: 800,
         show: false,
-        autoHideMenuBar: true,
+        autoHideMenuBar: false, // Changed from true to false per user request
         webPreferences: {
             preload: join(__dirname, '../preload/index.mjs'),
             sandbox: false,
@@ -40,7 +101,7 @@ function createWindow(): void {
     })
 
     mainWindow.on('ready-to-show', () => {
-        mainWindow.show()
+        mainWindow?.show()
     })
 
     mainWindow.webContents.setWindowOpenHandler((details) => {
@@ -55,6 +116,9 @@ function createWindow(): void {
     } else {
         mainWindow.loadFile(join(__dirname, '../renderer/index.html'))
     }
+
+    // Initialize menu with no show active
+    updateMenu(null)
 }
 
 // This method will be called when Electron has finished
@@ -73,6 +137,12 @@ app.whenReady().then(() => {
 
     // IPC test
     ipcMain.on('ping', () => console.log('pong'))
+
+    // Sync active show state from renderer to update native menu
+    ipcMain.on('sync:active-show', (_event, showId: string | null) => {
+        console.log('[Main] Syncing active show:', showId)
+        updateMenu(showId)
+    })
 
     // Bypass CORS for local MRS connections in development
     if (is.dev) {

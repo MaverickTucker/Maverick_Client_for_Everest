@@ -9,11 +9,18 @@ import logo from '../assets/logo.png'
 
 export function Menu() {
   const queryClient = useQueryClient()
-  const [isOpen, setIsOpen] = useState<string | null>(null)
+  const activeShowId = useShowStore((state) => state.activeShowId)
+
   const [isShowsDialogOpen, setIsShowsDialogOpen] = useState(false)
   const [isConfigModalOpen, setIsConfigModalOpen] = useState(false)
   const [isImportModalOpen, setIsImportModalOpen] = useState(false)
   const [importItems, setImportItems] = useState<ImportItem[]>([])
+
+  // Synchronize active show state to the main process for native menu updates
+  useEffect(() => {
+    // @ts-ignore
+    window.electron.ipcRenderer.send('sync:active-show', activeShowId)
+  }, [activeShowId])
 
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
@@ -23,37 +30,52 @@ export function Menu() {
       }
     }
 
+    // Define listeners
+    const onManageShows = () => setIsShowsDialogOpen(true)
+    const onImportScene = () => handleImportScene()
+    const onSettings = () => setIsConfigModalOpen(true)
+    const onDocumentation = () => handleDocumentation()
+    const onAbout = () => handleAbout()
+
+    // @ts-ignore
+    window.electron.ipcRenderer.on('menu:manage-shows', onManageShows)
+    // @ts-ignore
+    window.electron.ipcRenderer.on('menu:import-scene', onImportScene)
+    // @ts-ignore
+    window.electron.ipcRenderer.on('menu:settings', onSettings)
+    // @ts-ignore
+    window.electron.ipcRenderer.on('menu:documentation', onDocumentation)
+    // @ts-ignore
+    window.electron.ipcRenderer.on('menu:about', onAbout)
+
     window.addEventListener('keydown', handleKeyDown)
-    return () => window.removeEventListener('keydown', handleKeyDown)
+
+    return () => {
+      window.removeEventListener('keydown', handleKeyDown)
+      // @ts-ignore
+      window.electron.ipcRenderer.removeAllListeners('menu:manage-shows')
+      // @ts-ignore
+      window.electron.ipcRenderer.removeAllListeners('menu:import-scene')
+      // @ts-ignore
+      window.electron.ipcRenderer.removeAllListeners('menu:settings')
+      // @ts-ignore
+      window.electron.ipcRenderer.removeAllListeners('menu:documentation')
+      // @ts-ignore
+      window.electron.ipcRenderer.removeAllListeners('menu:about')
+    }
   }, [])
-
-  const handleSettings = () => {
-    setIsConfigModalOpen(true)
-    setIsOpen(null)
-  }
-  // ... existing code ...
-
-  const handleExit = () => {
-    window.close()
-  }
 
   const handleDocumentation = () => {
     console.log('Open Documentation')
-    setIsOpen(null)
   }
 
   const handleAbout = () => {
     console.log('Open About')
-    setIsOpen(null)
   }
 
   const handleImportScene = async () => {
-    setIsOpen(null)
-    const activeShowId = useShowStore.getState().activeShowId
-
     if (!activeShowId) {
       console.error('No active show selected')
-      // Optional: alert('Please select a show first')
       return
     }
 
@@ -86,8 +108,6 @@ export function Menu() {
           setImportItems(prev => prev.map(i => i.id === item.id ? { ...i, status: 'importing' } : i))
 
           try {
-            // Bypass Axios entirely to match working Postman/Python requests exactly.
-            // This avoids any potential issues with Axios interceptors or hidden behavior.
             const { host, port } = useConnectionStore.getState()
             const baseUrl = `http://${host.toLowerCase()}:${port}`
             const apiKey = import.meta.env.VITE_MRS_API_KEY || ''
@@ -119,9 +139,7 @@ export function Menu() {
           }
         }
 
-        // After loop finishes
         if (!hasErrorInBatch) {
-          // Success! Refresh templates and close after a delay
           console.log('[Import] Success! Refreshing templates...')
           queryClient.invalidateQueries({ queryKey: ['templates', activeShowId] })
           setTimeout(() => {
@@ -145,254 +163,11 @@ export function Menu() {
         />
       </div>
 
-      {/* File Menu */}
-      <div style={{ position: 'relative' }}>
-        <button
-          onClick={() => setIsOpen(isOpen === 'file' ? null : 'file')}
-          style={{
-            padding: '6px 12px',
-            fontSize: '14px',
-            color: '#d4d4d8',
-            backgroundColor: 'transparent',
-            border: 'none',
-            cursor: 'pointer',
-            borderRadius: '4px',
-            transition: 'all 0.2s'
-          }}
-          onMouseEnter={(e) => {
-            (e.target as HTMLElement).style.backgroundColor = 'var(--glacier-600)'
-              ; (e.target as HTMLElement).style.color = 'var(--glacier-50)'
-          }}
-          onMouseLeave={(e) => {
-            (e.target as HTMLElement).style.backgroundColor = 'transparent'
-              ; (e.target as HTMLElement).style.color = 'var(--glacier-200)'
-          }}
-        >
-          File
-        </button>
-        {isOpen === 'file' && (
-          <div style={{
-            position: 'absolute',
-            top: '100%',
-            left: 0,
-            marginTop: '4px',
-            backgroundColor: 'var(--glacier-800)',
-            border: '1px solid var(--glacier-700)',
-            borderRadius: '4px',
-            boxShadow: '0 4px 6px rgba(0, 0, 0, 0.3)',
-            zIndex: 50,
-            minWidth: '200px'
-          }}>
-            <button
-              onClick={handleSettings}
-              style={{
-                width: '100%',
-                textAlign: 'left',
-                padding: '8px 16px',
-                fontSize: '14px',
-                color: '#d4d4d8',
-                backgroundColor: 'transparent',
-                border: 'none',
-                cursor: 'pointer',
-                display: 'flex',
-                justifyContent: 'space-between',
-                alignItems: 'center',
-                transition: 'all 0.2s'
-              }}
-              onMouseEnter={(e) => {
-                (e.target as HTMLElement).style.backgroundColor = 'var(--glacier-600)'
-                  ; (e.target as HTMLElement).style.color = 'var(--glacier-50)'
-              }}
-              onMouseLeave={(e) => {
-                (e.target as HTMLElement).style.backgroundColor = 'transparent'
-                  ; (e.target as HTMLElement).style.color = 'var(--glacier-200)'
-              }}
-            >
-              Settings
-            </button>
-            <button
-              onClick={handleImportScene}
-              style={{
-                width: '100%',
-                textAlign: 'left',
-                padding: '8px 16px',
-                fontSize: '14px',
-                color: '#d4d4d8',
-                backgroundColor: 'transparent',
-                border: 'none',
-                cursor: 'pointer',
-                display: 'flex',
-                justifyContent: 'space-between',
-                alignItems: 'center',
-                transition: 'all 0.2s'
-              }}
-              onMouseEnter={(e) => {
-                (e.target as HTMLElement).style.backgroundColor = 'var(--glacier-600)'
-                  ; (e.target as HTMLElement).style.color = 'var(--glacier-50)'
-              }}
-              onMouseLeave={(e) => {
-                (e.target as HTMLElement).style.backgroundColor = 'transparent'
-                  ; (e.target as HTMLElement).style.color = 'var(--glacier-200)'
-              }}
-            >
-              Import Scenes...
-              <span style={{ fontSize: '12px', color: '#71717a' }}>*.sum</span>
-            </button>
-            <div style={{ borderTop: '1px solid #3f3f46', margin: '4px 0' }} />
-            <button
-              onClick={handleExit}
-              style={{
-                width: '100%',
-                textAlign: 'left',
-                padding: '8px 16px',
-                fontSize: '14px',
-                color: '#d4d4d8',
-                backgroundColor: 'transparent',
-                border: 'none',
-                cursor: 'pointer',
-                display: 'flex',
-                justifyContent: 'space-between',
-                alignItems: 'center',
-                transition: 'all 0.2s'
-              }}
-              onMouseEnter={(e) => {
-                (e.target as HTMLElement).style.backgroundColor = 'var(--glacier-600)'
-                  ; (e.target as HTMLElement).style.color = 'var(--glacier-50)'
-              }}
-              onMouseLeave={(e) => {
-                (e.target as HTMLElement).style.backgroundColor = 'transparent'
-                  ; (e.target as HTMLElement).style.color = 'var(--glacier-200)'
-              }}
-            >
-              Exit
-              <span style={{ fontSize: '12px', color: '#71717a' }}>Alt+F4</span>
-            </button>
-          </div>
-        )}
-      </div>
+      <div style={{ flex: 1 }} />
 
-      <div style={{ position: 'relative' }}>
-        <button
-          onClick={() => {
-            queryClient.invalidateQueries({ queryKey: ['shows'] })
-            setIsShowsDialogOpen(true)
-          }}
-          style={{
-            padding: '6px 12px',
-            fontSize: '14px',
-            color: '#d4d4d8',
-            backgroundColor: 'transparent',
-            border: 'none',
-            cursor: 'pointer',
-            borderRadius: '4px',
-            transition: 'all 0.2s'
-          }}
-          onMouseEnter={(e) => {
-            (e.target as HTMLElement).style.backgroundColor = 'var(--glacier-600)'
-              ; (e.target as HTMLElement).style.color = 'var(--glacier-50)'
-          }}
-          onMouseLeave={(e) => {
-            (e.target as HTMLElement).style.backgroundColor = 'transparent'
-              ; (e.target as HTMLElement).style.color = 'var(--glacier-200)'
-          }}
-        >
-          Shows
-        </button>
-      </div>
-
-      {/* Help Menu */}
-      <div style={{ position: 'relative' }}>
-        <button
-          onClick={() => setIsOpen(isOpen === 'help' ? null : 'help')}
-          style={{
-            padding: '6px 12px',
-            fontSize: '14px',
-            color: '#d4d4d8',
-            backgroundColor: 'transparent',
-            border: 'none',
-            cursor: 'pointer',
-            borderRadius: '4px',
-            transition: 'all 0.2s'
-          }}
-          onMouseEnter={(e) => {
-            (e.target as HTMLElement).style.backgroundColor = 'var(--glacier-600)'
-              ; (e.target as HTMLElement).style.color = 'var(--glacier-50)'
-          }}
-          onMouseLeave={(e) => {
-            (e.target as HTMLElement).style.backgroundColor = 'transparent'
-              ; (e.target as HTMLElement).style.color = 'var(--glacier-200)'
-          }}
-        >
-          Help
-        </button>
-        {isOpen === 'help' && (
-          <div style={{
-            position: 'absolute',
-            top: '100%',
-            left: 0,
-            marginTop: '4px',
-            backgroundColor: 'var(--glacier-800)',
-            border: '1px solid var(--glacier-700)',
-            borderRadius: '4px',
-            boxShadow: '0 4px 6px rgba(0, 0, 0, 0.3)',
-            zIndex: 50,
-            minWidth: '200px'
-          }}>
-            <button
-              onClick={handleDocumentation}
-              style={{
-                width: '100%',
-                textAlign: 'left',
-                padding: '8px 16px',
-                fontSize: '14px',
-                color: '#d4d4d8',
-                backgroundColor: 'transparent',
-                border: 'none',
-                cursor: 'pointer',
-                display: 'flex',
-                justifyContent: 'space-between',
-                alignItems: 'center',
-                transition: 'all 0.2s'
-              }}
-              onMouseEnter={(e) => {
-                (e.target as HTMLElement).style.backgroundColor = 'var(--glacier-600)'
-                  ; (e.target as HTMLElement).style.color = 'var(--glacier-50)'
-              }}
-              onMouseLeave={(e) => {
-                (e.target as HTMLElement).style.backgroundColor = 'transparent'
-                  ; (e.target as HTMLElement).style.color = 'var(--glacier-200)'
-              }}
-            >
-              Documentation
-              <span style={{ fontSize: '12px', color: '#71717a' }}>F1</span>
-            </button>
-            <div style={{ borderTop: '1px solid #3f3f46', margin: '4px 0' }} />
-            <button
-              onClick={handleAbout}
-              style={{
-                width: '100%',
-                textAlign: 'left',
-                padding: '8px 16px',
-                fontSize: '14px',
-                color: '#d4d4d8',
-                backgroundColor: 'transparent',
-                border: 'none',
-                cursor: 'pointer',
-                transition: 'all 0.2s'
-              }}
-              onMouseEnter={(e) => {
-                (e.target as HTMLElement).style.backgroundColor = 'var(--glacier-600)'
-                  ; (e.target as HTMLElement).style.color = 'var(--glacier-50)'
-              }}
-              onMouseLeave={(e) => {
-                (e.target as HTMLElement).style.backgroundColor = 'transparent'
-                  ; (e.target as HTMLElement).style.color = 'var(--glacier-200)'
-              }}
-            >
-              About
-            </button>
-          </div>
-        )}
+      {/* Space for future Top Bar buttons */}
+      <div style={{ display: 'flex', gap: '12px' }}>
+        {/* User can add custom buttons here */}
       </div>
 
       <PlayoutConfigModal isOpen={isConfigModalOpen} onClose={() => setIsConfigModalOpen(false)} />
