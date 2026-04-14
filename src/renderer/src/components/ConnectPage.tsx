@@ -1,6 +1,7 @@
 import { useState } from 'react'
 import { useConnectionStore } from '../stores/connectionStore'
 import logo from '../assets/logo.png'
+import { LogoSpinner } from './LogoSpinner'
 
 export function ConnectPage() {
     const { host: initialHost, port: initialPort, connect, isConnecting } = useConnectionStore()
@@ -17,7 +18,12 @@ export function ConnectPage() {
         <div className="bg-glacier-texture" style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', width: '100vw', height: '100vh', backgroundColor: 'var(--glacier-400)', color: 'var(--glacier-50)' }}>
             <div style={{ width: '100%', maxWidth: '400px', backgroundColor: 'var(--glacier-800)', padding: '32px', borderRadius: '12px', border: '1px solid var(--glacier-700)', boxShadow: '0 25px 50px -12px rgba(0, 0, 0, 0.5)', display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
 
-                <img src={logo} alt="Maverick Logo" style={{ width: '80px', height: '80px', filter: 'drop-shadow(0 0 16px var(--mint-green))', marginBottom: '24px', borderRadius: '8px' }} />
+                <img
+                    src={logo}
+                    alt="Maverick Logo"
+                    className="animate-spin animate-mint-glow"
+                    style={{ width: '80px', height: '80px', marginBottom: '24px', borderRadius: '8px' }}
+                />
 
                 <h1 style={{ fontSize: '24px', fontWeight: 700, margin: '0 0 8px 0', letterSpacing: '0.025em', textAlign: 'center' }}>CONNECT TO MRS</h1>
                 <p style={{ color: 'var(--glacier-200)', fontSize: '14px', marginBottom: '32px', textAlign: 'center' }}>
@@ -57,10 +63,16 @@ export function ConnectPage() {
                         style={{
                             marginTop: '16px', padding: '12px', backgroundColor: 'var(--mint-green)', color: 'var(--glacier-950)', border: 'none',
                             borderRadius: '6px', fontSize: '15px', fontWeight: 600, cursor: isConnecting ? 'not-allowed' : 'pointer',
-                            opacity: isConnecting ? 0.7 : 1, transition: 'all 0.2s'
+                            opacity: isConnecting ? 0.7 : 1, transition: 'all 0.2s',
+                            display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '8px'
                         }}
                     >
-                        {isConnecting ? 'Connecting...' : 'Connect'}
+                        {isConnecting ? (
+                            <>
+                                <LogoSpinner size={18} />
+                                Connecting...
+                            </>
+                        ) : 'Connect'}
                     </button>
                 </form>
             </div>

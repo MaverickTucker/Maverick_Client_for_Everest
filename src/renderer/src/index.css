@@ -92,3 +92,19 @@ body {
     height: 4px;
     cursor: row-resize;
 }
+
+@keyframes mint-glow {
+
+    0%,
+    100% {
+        filter: drop-shadow(0 0 2px rgba(52, 211, 153, 0.4));
+    }
+
+    50% {
+        filter: drop-shadow(0 0 10px rgba(52, 211, 153, 0.8));
+    }
+}
+
+.animate-mint-glow {
+    animation: mint-glow 2s ease-in-out infinite;
+}

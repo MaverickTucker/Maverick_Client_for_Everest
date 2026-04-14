@@ -21,7 +21,9 @@ export function Menu() {
   const {
     selectedTemplateId,
     selectedElementId,
-    fieldValues
+    fieldValues,
+    templateOverrides,
+    elementOverrides
   } = useSelectionStore()
 
   const channels = useConfigStore(state => state.channels)
@@ -260,12 +262,15 @@ export function Menu() {
     const elementId = selectedElementId || selectedTemplateId
     if (!elementId) return
 
+    const override = isElement ? elementOverrides[elementId] : templateOverrides[elementId]
+    const channelId = override?.channelId || pgmChannel.id
+
     try {
       await outMutation.mutateAsync({
         showId: activeShowId,
         elementId,
         itemType: isElement ? 'element' : 'template',
-        channelId: pgmChannel.id
+        channelId
       })
     } catch (err) {
       console.error('OUT action failed:', err)
@@ -279,12 +284,15 @@ export function Menu() {
     const elementId = selectedElementId || selectedTemplateId
     if (!elementId) return
 
+    const override = isElement ? elementOverrides[elementId] : templateOverrides[elementId]
+    const channelId = override?.channelId || pgmChannel.id
+
     try {
       await contMutation.mutateAsync({
         showId: activeShowId,
         elementId,
         itemType: isElement ? 'element' : 'template',
-        channelId: pgmChannel.id
+        channelId
       })
     } catch (err) {
       console.error('CONT action failed:', err)
@@ -301,12 +309,17 @@ export function Menu() {
       return
     }
 
+    const override = isElement ? elementOverrides[elementId] : templateOverrides[elementId]
+    const channelId = override?.channelId || pgmChannel.id
+    const layer = override?.layer || 1
+
     try {
       await takeMutation.mutateAsync({
         showId: activeShowId,
         elementId,
         itemType: isElement ? 'element' : 'template',
-        channelId: pgmChannel.id,
+        channelId,
+        layer,
         // Templates load with default scene state (empty/null data), elements use field editor values
         data: isElement ? fieldValues : {}
       })

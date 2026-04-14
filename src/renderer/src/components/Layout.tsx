@@ -3,6 +3,7 @@ import { Panel, Group as PanelGroup, Separator as PanelResizeHandle } from 'reac
 import { useShowStore } from '../stores/showStore'
 import { useSelectionStore } from '../stores/selectionStore'
 import { useTemplates } from '../hooks/useTemplates'
+import { useConfigStore } from '../stores/configStore'
 import { useElements } from '../hooks/useElements'
 import { useTemplateDetails } from '../hooks/useTemplateDetails'
 import { Box, Layers } from 'lucide-react'
@@ -18,6 +19,8 @@ function ResizeHandle() {
 
 export function Layout() {
   const { activeShowId } = useShowStore()
+  const channels = useConfigStore(state => state.channels)
+  const pgmChannel = channels.find(c => c.role === 'PGM') || channels[0]
   const {
     selectedTemplateId,
     setSelectedTemplateId,
@@ -29,6 +32,10 @@ export function Layout() {
     setFocusedElementId,
     fieldValues,
     setFieldValues,
+    templateOverrides,
+    elementOverrides,
+    updateTemplateOverride,
+    updateElementOverride,
     updateField
   } = useSelectionStore()
 
@@ -103,11 +110,15 @@ export function Layout() {
                 {/* Templates */}
                 <Panel defaultSize={50} minSize={20}>
                   <div style={{ height: 'calc(100% - 8px)', overflow: 'hidden', backgroundColor: 'rgba(49, 72, 89, 0.85)', backdropFilter: 'blur(4px)', border: '1px solid var(--glacier-700)', margin: '4px', borderRadius: '4px', display: 'flex', flexDirection: 'column' }}>
-                    <div style={{ backgroundColor: 'var(--glacier-950)', padding: '8px 16px', borderBottom: '1px solid var(--glacier-700)', flexShrink: 0, display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                      <h3 style={{ margin: 0, fontSize: '14px', fontWeight: 600, display: 'flex', alignItems: 'center', gap: '8px' }}>
+                    <div style={{ backgroundColor: 'var(--glacier-950)', padding: '6px 16px', borderBottom: '1px solid var(--glacier-700)', flexShrink: 0, display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                      <h3 style={{ margin: 0, fontSize: '12px', fontWeight: 600, display: 'flex', alignItems: 'center', gap: '8px', flex: 1 }}>
                         <Layers size={14} className="text-mint-green" />
                         Templates
                       </h3>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: '8px', fontSize: '10px', color: 'var(--glacier-400)', fontWeight: 700 }}>
+                        <span style={{ width: '80px', textAlign: 'center' }}>CHANNEL</span>
+                        <span style={{ width: '60px', textAlign: 'center' }}>LAYER</span>
+                      </div>
                     </div>
                     <div style={{ flex: 1, overflow: 'auto', padding: '12px', display: 'flex', flexDirection: 'column', gap: '4px' }}>
                       {templatesLoading ? (
@@ -117,6 +128,9 @@ export function Layout() {
                           const isFocused = focusedTemplateId === t.id
                           const isSelected = selectedTemplateId === t.id
                           const isHighlighted = isFocused || isSelected
+                          const override = templateOverrides[t.id]
+                          const currentChannelId = override?.channelId || pgmChannel?.id || ''
+                          const currentLayer = override?.layer || 1
 
                           return (
                             <div
@@ -124,7 +138,7 @@ export function Layout() {
                               onClick={() => setFocusedTemplateId(t.id)}
                               onDoubleClick={() => setSelectedTemplateId(t.id)}
                               style={{
-                                padding: '8px 12px',
+                                padding: '4px 12px',
                                 backgroundColor: isSelected
                                   ? 'rgba(52, 211, 153, 0.15)'
                                   : isFocused
@@ -153,11 +167,40 @@ export function Layout() {
                                 if (!isHighlighted) e.currentTarget.style.borderColor = 'var(--glacier-700)'
                               }}
                             >
-                              <Layers size={14} style={{ color: isSelected ? 'var(--mint-green)' : isFocused ? 'var(--glacier-200)' : 'var(--glacier-300)' }} />
-                              <span style={{
-                                fontWeight: isSelected ? 700 : isFocused ? 500 : 400,
-                                color: isSelected ? '#fff' : isFocused ? 'var(--glacier-50)' : 'var(--glacier-100)'
-                              }}>{t.name}</span>
+                              <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flex: 1, minWidth: 0 }}>
+                                <Layers size={14} style={{ color: isSelected ? 'var(--mint-green)' : isFocused ? 'var(--glacier-200)' : 'var(--glacier-300)', flexShrink: 0 }} />
+                                <span style={{
+                                  fontWeight: isSelected ? 700 : isFocused ? 500 : 400,
+                                  color: isSelected ? '#fff' : isFocused ? 'var(--glacier-50)' : 'var(--glacier-100)',
+                                  overflow: 'hidden',
+                                  textOverflow: 'ellipsis',
+                                  whiteSpace: 'nowrap'
+                                }}>{t.name}</span>
+                              </div>
+
+                              <select
+                                value={currentChannelId}
+                                onClick={(evt) => evt.stopPropagation()}
+                                onChange={(evt) => updateTemplateOverride(t.id, evt.target.value, currentLayer)}
+                                style={{ width: '80px', fontSize: '11px', backgroundColor: 'var(--glacier-950)', border: '1px solid var(--glacier-700)', color: 'var(--glacier-50)', borderRadius: '2px', outline: 'none' }}
+                              >
+                                {channels.map((ch: any) => (
+                                  <option key={ch.id} value={ch.id}>
+                                    {ch.name}{ch.role === 'PGM' ? ' (PGM)' : ch.role === 'PVW' ? ' (PVW)' : ''}
+                                  </option>
+                                ))}
+                              </select>
+
+                              <select
+                                value={currentLayer}
+                                onClick={(evt) => evt.stopPropagation()}
+                                onChange={(evt) => updateTemplateOverride(t.id, currentChannelId, parseInt(evt.target.value))}
+                                style={{ width: '60px', fontSize: '11px', backgroundColor: 'var(--glacier-950)', border: '1px solid var(--glacier-700)', color: 'var(--glacier-50)', borderRadius: '2px', outline: 'none', textAlign: 'center' }}
+                              >
+                                {[1, 2, 3, 4, 5, 6].map(l => (
+                                  <option key={l} value={l}>{l}</option>
+                                ))}
+                              </select>
                             </div>
                           )
                         })
@@ -171,8 +214,12 @@ export function Layout() {
                 {/* Elements */}
                 <Panel defaultSize={50} minSize={20}>
                   <div style={{ height: 'calc(100% - 8px)', overflow: 'hidden', backgroundColor: 'rgba(49, 72, 89, 0.85)', backdropFilter: 'blur(4px)', border: '1px solid var(--glacier-700)', margin: '4px', borderRadius: '4px', display: 'flex', flexDirection: 'column' }}>
-                    <div style={{ backgroundColor: 'var(--glacier-950)', padding: '8px 16px', borderBottom: '1px solid var(--glacier-700)', flexShrink: 0 }}>
-                      <h3 style={{ margin: 0, fontSize: '14px', fontWeight: 600 }}>Elements</h3>
+                    <div style={{ backgroundColor: 'var(--glacier-950)', padding: '6px 16px', borderBottom: '1px solid var(--glacier-700)', flexShrink: 0, display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                      <h3 style={{ margin: 0, fontSize: '12px', fontWeight: 600, flex: 1 }}>Elements</h3>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: '8px', fontSize: '10px', color: 'var(--glacier-400)', fontWeight: 700 }}>
+                        <span style={{ width: '80px', textAlign: 'center' }}>CHANNEL</span>
+                        <span style={{ width: '60px', textAlign: 'center' }}>LAYER</span>
+                      </div>
                     </div>
                     <div style={{ flex: 1, overflow: 'auto', padding: '12px', display: 'flex', flexDirection: 'column', gap: '4px' }}>
                       {elementsLoading ? (
@@ -182,6 +229,9 @@ export function Layout() {
                           const isFocused = focusedElementId === e.id
                           const isSelected = selectedElementId === e.id
                           const isHighlighted = isFocused || isSelected
+                          const override = elementOverrides[e.id]
+                          const currentChannelId = override?.channelId || pgmChannel?.id || ''
+                          const currentLayer = override?.layer || 1
 
                           return (
                             <div
@@ -189,7 +239,7 @@ export function Layout() {
                               onClick={() => setFocusedElementId(e.id)}
                               onDoubleClick={() => setSelectedElementId(e.id)}
                               style={{
-                                padding: '8px 12px',
+                                padding: '4px 12px',
                                 backgroundColor: isSelected
                                   ? 'rgba(52, 211, 153, 0.15)'
                                   : isFocused
@@ -218,11 +268,40 @@ export function Layout() {
                                 if (!isHighlighted) e.currentTarget.style.borderColor = 'var(--glacier-700)'
                               }}
                             >
-                              <Box size={14} style={{ color: isSelected ? 'var(--mint-green)' : isFocused ? 'var(--glacier-200)' : 'var(--glacier-300)' }} />
-                              <span style={{
-                                fontWeight: isSelected ? 700 : isFocused ? 500 : 400,
-                                color: isSelected ? '#fff' : isFocused ? 'var(--glacier-50)' : 'var(--glacier-100)'
-                              }}>{e.name}</span>
+                              <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flex: 1, minWidth: 0 }}>
+                                <Box size={14} style={{ color: isSelected ? 'var(--mint-green)' : isFocused ? 'var(--glacier-200)' : 'var(--glacier-300)', flexShrink: 0 }} />
+                                <span style={{
+                                  fontWeight: isSelected ? 700 : isFocused ? 500 : 400,
+                                  color: isSelected ? '#fff' : isFocused ? 'var(--glacier-50)' : 'var(--glacier-100)',
+                                  overflow: 'hidden',
+                                  textOverflow: 'ellipsis',
+                                  whiteSpace: 'nowrap'
+                                }}>{e.name}</span>
+                              </div>
+
+                              <select
+                                value={currentChannelId}
+                                onClick={(evt) => evt.stopPropagation()}
+                                onChange={(evt) => updateElementOverride(e.id, evt.target.value, currentLayer)}
+                                style={{ width: '80px', fontSize: '11px', backgroundColor: 'var(--glacier-950)', border: '1px solid var(--glacier-700)', color: 'var(--glacier-50)', borderRadius: '2px', outline: 'none' }}
+                              >
+                                {channels.map((ch: any) => (
+                                  <option key={ch.id} value={ch.id}>
+                                    {ch.name}{ch.role === 'PGM' ? ' (PGM)' : ch.role === 'PVW' ? ' (PVW)' : ''}
+                                  </option>
+                                ))}
+                              </select>
+
+                              <select
+                                value={currentLayer}
+                                onClick={(evt) => evt.stopPropagation()}
+                                onChange={(evt) => updateElementOverride(e.id, currentChannelId, parseInt(evt.target.value))}
+                                style={{ width: '60px', fontSize: '11px', backgroundColor: 'var(--glacier-950)', border: '1px solid var(--glacier-700)', color: 'var(--glacier-50)', borderRadius: '2px', outline: 'none', textAlign: 'center' }}
+                              >
+                                {[1, 2, 3, 4, 5, 6].map(l => (
+                                  <option key={l} value={l}>{l}</option>
+                                ))}
+                              </select>
                             </div>
                           )
                         })

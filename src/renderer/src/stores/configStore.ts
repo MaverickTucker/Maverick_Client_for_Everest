@@ -18,11 +18,25 @@ export interface Channel {
     role: 'PGM' | 'PVW' | 'NONE'
 }
 
+export interface EngineLayer {
+    name: string
+    path: string
+}
+
+export interface EngineScene {
+    scene: {
+        layers: EngineLayer[]
+    }
+    singleLayer: boolean
+}
+
 export interface Engine {
     id: string
+    name?: string
     host: string
     port: number
     status?: string
+    current_scene?: EngineScene
 }
 
 interface ConfigState {
@@ -94,7 +108,8 @@ export const useConfigStore = create<ConfigState>()(
                     const response = await secureAxios.get<Engine[]>('/api/engines')
                     const normalized = (response.data || []).map(e => ({
                         ...e,
-                        status: e.status ? e.status.toUpperCase() : undefined
+                        status: e.status ? e.status.toUpperCase() : undefined,
+                        current_scene: e.current_scene
                     }))
                     set({ engines: normalized })
                 } catch (error) {
@@ -145,7 +160,8 @@ export const useConfigStore = create<ConfigState>()(
                             console.log('[WS Engines] Initial state received:', message.engines)
                             const normalized = (message.engines || []).map((e: Engine) => ({
                                 ...e,
-                                status: e.status ? e.status.toUpperCase() : undefined
+                                status: e.status ? e.status.toUpperCase() : undefined,
+                                current_scene: e.current_scene
                             }))
                             set({ engines: normalized })
                         } else if (message.event === 'engine_state_change') {
@@ -153,7 +169,9 @@ export const useConfigStore = create<ConfigState>()(
                             const newStatus = message.state ? String(message.state).toUpperCase() : undefined
                             set((state) => ({
                                 engines: (state.engines || []).map(e =>
-                                    e.id === message.engine_id ? { ...e, status: newStatus } : e
+                                    e.id === message.engine_id
+                                        ? { ...e, status: newStatus, current_scene: message.current_scene ?? e.current_scene }
+                                        : e
                                 )
                             }))
                         }

@@ -18,7 +18,7 @@ export function LogoSpinner({ size = 20, className = '', style = {} }: LogoSpinn
                 display: 'inline-block',
                 ...style
             }}
-            className={`animate-spin ${className}`}
+            className={`animate-spin animate-mint-glow ${className}`}
         />
     )
 }
