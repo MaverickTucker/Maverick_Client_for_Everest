@@ -1,5 +1,6 @@
 import { useState } from 'react'
-import { X, Plus, Edit2, Trash2, Check, Loader2 } from 'lucide-react'
+import { X, Plus, Edit2, Trash2, Check, Download, Upload } from 'lucide-react'
+import { LogoSpinner } from './LogoSpinner'
 import { useShows, Show } from '../hooks/useShows'
 import { useShowStore } from '../stores/showStore'
 
@@ -9,7 +10,7 @@ interface ShowsDialogProps {
 }
 
 export function ShowsDialog({ isOpen, onClose }: ShowsDialogProps) {
-    const { shows, isLoading, isError, createShow, updateShow, deleteShow } = useShows()
+    const { shows, isLoading, isError, createShow, updateShow, deleteShow, exportShow, importShow } = useShows()
     const { activeShowId, setActiveShow } = useShowStore()
 
     const [isCreating, setIsCreating] = useState(false)
@@ -48,6 +49,28 @@ export function ShowsDialog({ isOpen, onClose }: ShowsDialogProps) {
         }
     }
 
+    const handleExport = async (e: React.MouseEvent, id: string) => {
+        e.stopPropagation()
+        try {
+            await exportShow.mutateAsync(id)
+        } catch (err) {
+            console.error('Export failed:', err)
+            alert('Failed to export show.')
+        }
+    }
+
+    const handleImportClick = async () => {
+        try {
+            await importShow.mutateAsync(undefined)
+        } catch (err) {
+            console.error('Import failed:', err)
+            // Error handling is mostly inside the hook/main, but we can alert here
+            if (err instanceof Error && err.message !== 'No import data provided') {
+                alert('Failed to import show: ' + err.message)
+            }
+        }
+    }
+
     return (
         <div
             style={{
@@ -69,18 +92,29 @@ export function ShowsDialog({ isOpen, onClose }: ShowsDialogProps) {
                 <div style={{ backgroundColor: 'var(--glacier-950)', padding: '16px', borderBottom: '1px solid var(--glacier-700)', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                     <h2 style={{ margin: 0, fontSize: '18px', fontWeight: 600, color: 'var(--glacier-50)', display: 'flex', alignItems: 'center', gap: '8px' }}>
                         Shows
-                        <button
-                            onClick={() => {
-                                setIsCreating(true)
-                                setNewShowName('')
-                            }}
-                            style={{ background: 'transparent', border: 'none', color: 'var(--mint-green)', cursor: 'pointer', padding: '4px', display: 'flex', alignItems: 'center', borderRadius: '4px' }}
-                            onMouseEnter={(e) => e.currentTarget.style.backgroundColor = 'var(--glacier-600)'}
-                            onMouseLeave={(e) => e.currentTarget.style.backgroundColor = 'transparent'}
-                            title="Add Show"
-                        >
-                            <Plus size={18} />
-                        </button>
+                        <div style={{ display: 'flex', gap: '4px' }}>
+                            <button
+                                onClick={() => {
+                                    setIsCreating(true)
+                                    setNewShowName('')
+                                }}
+                                style={{ background: 'transparent', border: 'none', color: 'var(--mint-green)', cursor: 'pointer', padding: '4px', display: 'flex', alignItems: 'center', borderRadius: '4px' }}
+                                onMouseEnter={(e) => e.currentTarget.style.backgroundColor = 'var(--glacier-600)'}
+                                onMouseLeave={(e) => e.currentTarget.style.backgroundColor = 'transparent'}
+                                title="Add Show"
+                            >
+                                <Plus size={18} />
+                            </button>
+                            <button
+                                onClick={handleImportClick}
+                                style={{ background: 'transparent', border: 'none', color: 'var(--glacier-300)', cursor: 'pointer', padding: '4px', display: 'flex', alignItems: 'center', borderRadius: '4px' }}
+                                onMouseEnter={(e) => e.currentTarget.style.backgroundColor = 'var(--glacier-600)'}
+                                onMouseLeave={(e) => e.currentTarget.style.backgroundColor = 'transparent'}
+                                title="Import Show (JSON)"
+                            >
+                                {importShow.isPending ? <LogoSpinner size={18} /> : <Download size={18} />}
+                            </button>
+                        </div>
                     </h2>
                     <button
                         onClick={onClose}
@@ -97,7 +131,7 @@ export function ShowsDialog({ isOpen, onClose }: ShowsDialogProps) {
 
                     {isLoading && (
                         <div style={{ display: 'flex', justifyContent: 'center', padding: '24px 0', color: 'var(--mint-green)' }}>
-                            <Loader2 className="animate-spin" size={24} />
+                            <LogoSpinner size={24} />
                         </div>
                     )}
 
@@ -129,7 +163,7 @@ export function ShowsDialog({ isOpen, onClose }: ShowsDialogProps) {
                                 disabled={createShow.isPending}
                                 style={{ background: 'transparent', border: 'none', color: 'var(--mint-green)', cursor: 'pointer', padding: '4px' }}
                             >
-                                {createShow.isPending ? <Loader2 className="animate-spin" size={16} /> : <Check size={16} />}
+                                {createShow.isPending ? <LogoSpinner size={16} /> : <Check size={16} />}
                             </button>
                             <button
                                 onClick={() => setIsCreating(false)}
@@ -179,7 +213,7 @@ export function ShowsDialog({ isOpen, onClose }: ShowsDialogProps) {
                                             disabled={updateShow.isPending}
                                             style={{ background: 'transparent', border: 'none', color: 'var(--mint-green)', cursor: 'pointer', padding: '4px' }}
                                         >
-                                            {updateShow.isPending ? <Loader2 className="animate-spin" size={16} /> : <Check size={16} />}
+                                            {updateShow.isPending ? <LogoSpinner size={16} /> : <Check size={16} />}
                                         </button>
                                         <button
                                             onClick={() => setEditingId(null)}
@@ -196,6 +230,15 @@ export function ShowsDialog({ isOpen, onClose }: ShowsDialogProps) {
                                         {activeShowId === show.id && <span style={{ marginLeft: '8px', fontSize: '10px', color: 'var(--mint-green)', verticalAlign: 'middle' }}>(ACTIVE)</span>}
                                     </span>
                                     <div style={{ display: 'flex', gap: '4px' }}>
+                                        <button
+                                            onClick={(e) => handleExport(e, show.id)}
+                                            style={{ background: 'transparent', border: 'none', color: 'var(--glacier-300)', cursor: 'pointer', padding: '4px' }}
+                                            onMouseEnter={(e) => e.currentTarget.style.color = 'var(--mint-green)'}
+                                            onMouseLeave={(e) => e.currentTarget.style.color = 'var(--glacier-300)'}
+                                            title="Export Show (JSON)"
+                                        >
+                                            {exportShow.isPending && exportShow.variables === show.id ? <LogoSpinner size={14} /> : <Upload size={14} />}
+                                        </button>
                                         <button
                                             onClick={(e) => {
                                                 e.stopPropagation()
@@ -220,7 +263,7 @@ export function ShowsDialog({ isOpen, onClose }: ShowsDialogProps) {
                                             onMouseLeave={(e) => e.currentTarget.style.color = 'var(--glacier-300)'}
                                             title="Delete"
                                         >
-                                            {deleteShow.isPending ? <Loader2 className="animate-spin" size={14} /> : <Trash2 size={14} />}
+                                            {deleteShow.isPending ? <LogoSpinner size={14} /> : <Trash2 size={14} />}
                                         </button>
                                     </div>
                                 </>

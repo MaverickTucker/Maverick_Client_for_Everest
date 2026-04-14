@@ -1,7 +1,5 @@
 import { X, CheckCircle2, AlertCircle } from 'lucide-react'
-
-// Using public path for the icon
-const loadingIcon = '/Loading icon.ico'
+import { LogoSpinner } from './LogoSpinner'
 
 export interface ImportItem {
     id: string
@@ -102,12 +100,7 @@ export function ImportStatusModal({ isOpen, items, onClose }: ImportStatusModalP
                             <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '12px' }}>
                                 <div style={{ display: 'flex', alignItems: 'center', gap: '12px', overflow: 'hidden', flex: 1 }}>
                                     {item.status === 'importing' && (
-                                        <img
-                                            src={loadingIcon}
-                                            className="animate-rotate-slow"
-                                            style={{ width: '20px', height: '20px', flexShrink: 0, filter: 'drop-shadow(0 0 5px var(--mint-green))' }}
-                                            alt="Loading"
-                                        />
+                                        <LogoSpinner size={20} className="flex-shrink-0" style={{ filter: 'drop-shadow(0 0 5px var(--mint-green))' }} />
                                     )}
                                     {item.status === 'pending' && (
                                         <div

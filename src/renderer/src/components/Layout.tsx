@@ -5,7 +5,8 @@ import { useSelectionStore } from '../stores/selectionStore'
 import { useTemplates } from '../hooks/useTemplates'
 import { useElements } from '../hooks/useElements'
 import { useTemplateDetails } from '../hooks/useTemplateDetails'
-import { Loader2, Box, Layers } from 'lucide-react'
+import { Box, Layers } from 'lucide-react'
+import { LogoSpinner } from './LogoSpinner'
 import { useEffect } from 'react'
 import { StatusBar } from './StatusBar'
 
@@ -22,6 +23,10 @@ export function Layout() {
     setSelectedTemplateId,
     selectedElementId,
     setSelectedElementId,
+    focusedTemplateId,
+    setFocusedTemplateId,
+    focusedElementId,
+    setFocusedElementId,
     fieldValues,
     setFieldValues,
     updateField
@@ -31,7 +36,7 @@ export function Layout() {
   const { data: elements, isLoading: elementsLoading } = useElements(activeShowId)
 
   // Find the selected template to get its path for the scene-info call
-  const selectedTemplate = templates?.find(t => t.id === selectedTemplateId)
+  const selectedTemplate = templates?.find(t => String(t.id) === String(selectedTemplateId))
 
   // If we have a selectedTemplateId but can't find it in the list (e.g. show changed), clear it
   useEffect(() => {
@@ -42,8 +47,7 @@ export function Layout() {
 
   const { data: templateDetails, isLoading: detailsLoading } = useTemplateDetails(
     activeShowId,
-    selectedTemplateId,
-    selectedTemplate?.path || null
+    selectedTemplateId
   )
 
   // Handle template details loading
@@ -107,31 +111,56 @@ export function Layout() {
                     </div>
                     <div style={{ flex: 1, overflow: 'auto', padding: '12px', display: 'flex', flexDirection: 'column', gap: '4px' }}>
                       {templatesLoading ? (
-                        <div style={{ display: 'flex', justifyContent: 'center', padding: '20px' }}><Loader2 className="animate-spin" size={20} /></div>
-                      ) : templates?.length === 0 ? (
-                        <div style={{ fontSize: '13px', color: '#71717a', textAlign: 'center', padding: '20px' }}>No templates found.</div>
+                        <div style={{ display: 'flex', justifyContent: 'center', padding: '20px' }}><LogoSpinner size={20} /></div>
                       ) : (
-                        templates?.map(t => (
-                          <div
-                            key={t.id}
-                            onDoubleClick={() => setSelectedTemplateId(t.id)}
-                            style={{
-                              padding: '8px 12px',
-                              backgroundColor: selectedTemplateId === t.id ? 'rgba(52, 211, 153, 0.1)' : 'var(--glacier-900)',
-                              borderRadius: '4px',
-                              border: '1px solid',
-                              borderColor: selectedTemplateId === t.id ? 'var(--mint-green)' : 'var(--glacier-700)',
-                              fontSize: '13px',
-                              cursor: 'pointer',
-                              display: 'flex',
-                              alignItems: 'center',
-                              gap: '8px'
-                            }}
-                          >
-                            <Layers size={14} style={{ color: selectedTemplateId === t.id ? 'var(--mint-green)' : 'var(--glacier-300)' }} />
-                            {t.name}
-                          </div>
-                        ))
+                        templates?.map(t => {
+                          const isFocused = focusedTemplateId === t.id
+                          const isSelected = selectedTemplateId === t.id
+                          const isHighlighted = isFocused || isSelected
+
+                          return (
+                            <div
+                              key={t.id}
+                              onClick={() => setFocusedTemplateId(t.id)}
+                              onDoubleClick={() => setSelectedTemplateId(t.id)}
+                              style={{
+                                padding: '8px 12px',
+                                backgroundColor: isSelected
+                                  ? 'rgba(52, 211, 153, 0.15)'
+                                  : isFocused
+                                    ? 'rgba(145, 188, 207, 0.15)'
+                                    : 'var(--glacier-900)',
+                                borderRadius: '4px',
+                                border: '1px solid',
+                                borderColor: isSelected
+                                  ? 'var(--mint-green)'
+                                  : isFocused
+                                    ? 'var(--glacier-400)'
+                                    : 'var(--glacier-700)',
+                                opacity: isSelected ? 1 : 0.9,
+                                fontSize: '13px',
+                                cursor: 'pointer',
+                                display: 'flex',
+                                alignItems: 'center',
+                                gap: '8px',
+                                userSelect: 'none',
+                                transition: 'all 0.1s ease'
+                              }}
+                              onMouseEnter={(e) => {
+                                if (!isHighlighted) e.currentTarget.style.borderColor = 'var(--glacier-600)'
+                              }}
+                              onMouseLeave={(e) => {
+                                if (!isHighlighted) e.currentTarget.style.borderColor = 'var(--glacier-700)'
+                              }}
+                            >
+                              <Layers size={14} style={{ color: isSelected ? 'var(--mint-green)' : isFocused ? 'var(--glacier-200)' : 'var(--glacier-300)' }} />
+                              <span style={{
+                                fontWeight: isSelected ? 700 : isFocused ? 500 : 400,
+                                color: isSelected ? '#fff' : isFocused ? 'var(--glacier-50)' : 'var(--glacier-100)'
+                              }}>{t.name}</span>
+                            </div>
+                          )
+                        })
                       )}
                     </div>
                   </div>
@@ -147,31 +176,56 @@ export function Layout() {
                     </div>
                     <div style={{ flex: 1, overflow: 'auto', padding: '12px', display: 'flex', flexDirection: 'column', gap: '4px' }}>
                       {elementsLoading ? (
-                        <div style={{ display: 'flex', justifyContent: 'center', padding: '20px' }}><Loader2 className="animate-spin" size={20} /></div>
-                      ) : elements?.length === 0 ? (
-                        <div style={{ fontSize: '13px', color: '#71717a', textAlign: 'center', padding: '20px' }}>No elements saved.</div>
+                        <div style={{ display: 'flex', justifyContent: 'center', padding: '20px' }}><LogoSpinner size={20} /></div>
                       ) : (
-                        elements?.map(e => (
-                          <div
-                            key={e.id}
-                            onDoubleClick={() => setSelectedElementId(e.id)}
-                            style={{
-                              padding: '8px 12px',
-                              backgroundColor: selectedElementId === e.id ? 'rgba(52, 211, 153, 0.1)' : 'var(--glacier-900)',
-                              borderRadius: '4px',
-                              border: '1px solid',
-                              borderColor: selectedElementId === e.id ? 'var(--mint-green)' : 'var(--glacier-700)',
-                              fontSize: '13px',
-                              cursor: 'pointer',
-                              display: 'flex',
-                              alignItems: 'center',
-                              gap: '8px'
-                            }}
-                          >
-                            <Box size={14} style={{ color: selectedElementId === e.id ? 'var(--mint-green)' : 'var(--glacier-300)' }} />
-                            {e.name}
-                          </div>
-                        ))
+                        elements?.map(e => {
+                          const isFocused = focusedElementId === e.id
+                          const isSelected = selectedElementId === e.id
+                          const isHighlighted = isFocused || isSelected
+
+                          return (
+                            <div
+                              key={e.id}
+                              onClick={() => setFocusedElementId(e.id)}
+                              onDoubleClick={() => setSelectedElementId(e.id)}
+                              style={{
+                                padding: '8px 12px',
+                                backgroundColor: isSelected
+                                  ? 'rgba(52, 211, 153, 0.15)'
+                                  : isFocused
+                                    ? 'rgba(145, 188, 207, 0.15)'
+                                    : 'var(--glacier-900)',
+                                borderRadius: '4px',
+                                border: '1px solid',
+                                borderColor: isSelected
+                                  ? 'var(--mint-green)'
+                                  : isFocused
+                                    ? 'var(--glacier-400)'
+                                    : 'var(--glacier-700)',
+                                opacity: isSelected ? 1 : 0.9,
+                                fontSize: '13px',
+                                cursor: 'pointer',
+                                display: 'flex',
+                                alignItems: 'center',
+                                gap: '8px',
+                                userSelect: 'none',
+                                transition: 'all 0.1s ease'
+                              }}
+                              onMouseEnter={(e) => {
+                                if (!isHighlighted) e.currentTarget.style.borderColor = 'var(--glacier-600)'
+                              }}
+                              onMouseLeave={(e) => {
+                                if (!isHighlighted) e.currentTarget.style.borderColor = 'var(--glacier-700)'
+                              }}
+                            >
+                              <Box size={14} style={{ color: isSelected ? 'var(--mint-green)' : isFocused ? 'var(--glacier-200)' : 'var(--glacier-300)' }} />
+                              <span style={{
+                                fontWeight: isSelected ? 700 : isFocused ? 500 : 400,
+                                color: isSelected ? '#fff' : isFocused ? 'var(--glacier-50)' : 'var(--glacier-100)'
+                              }}>{e.name}</span>
+                            </div>
+                          )
+                        })
                       )}
                     </div>
                   </div>
@@ -211,7 +265,7 @@ export function Layout() {
                         </div>
                       ) : detailsLoading ? (
                         <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', padding: '40px', gap: '12px' }}>
-                          <Loader2 className="animate-spin text-mint-green" size={24} />
+                          <LogoSpinner size={24} />
                           <span style={{ fontSize: '12px', color: 'var(--glacier-200)' }}>Loading fields...</span>
                         </div>
                       ) : Object.keys(fieldValues).length > 0 ? (

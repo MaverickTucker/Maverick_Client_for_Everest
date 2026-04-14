@@ -4,6 +4,7 @@ import { secureAxios } from '../api/secure-axios'
 export interface Element {
     id: string
     show_id: string
+    template_id: string
     name: string
     data: any
 }

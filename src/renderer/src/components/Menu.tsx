@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react'
+import { LogoSpinner } from './LogoSpinner'
 import { useQueryClient } from '@tanstack/react-query'
 import { ShowsDialog } from './ShowsDialog'
 import { useShowStore } from '../stores/showStore'
@@ -6,6 +7,8 @@ import { useConnectionStore } from '../stores/connectionStore'
 import { useSelectionStore } from '../stores/selectionStore'
 import { useConfigStore } from '../stores/configStore'
 import { useTake, useOut, useCont } from '../hooks/usePlayout'
+import { useCreateElement, useUpdateElement } from '../hooks/useElementActions'
+import { useElements } from '../hooks/useElements'
 import { ImportStatusModal, ImportItem } from './ImportStatusModal'
 import { PlayoutConfigModal } from './PlayoutConfigModal'
 import logo from '../assets/logo.png'
@@ -28,6 +31,10 @@ export function Menu() {
   const outMutation = useOut()
   const contMutation = useCont()
 
+  const { data: elements = [] } = useElements(activeShowId)
+  const createElementMutation = useCreateElement()
+  const updateElementMutation = useUpdateElement()
+
   const [isShowsDialogOpen, setIsShowsDialogOpen] = useState(false)
   const [isConfigModalOpen, setIsConfigModalOpen] = useState(false)
   const [isImportModalOpen, setIsImportModalOpen] = useState(false)
@@ -35,13 +42,28 @@ export function Menu() {
 
   // New Top Bar States
   const [numericId, setNumericId] = useState('0000')
-  const [slug, setSlug] = useState('')
+  const [slug, setSlug] = useState('1')
 
   // Synchronize active show state to the main process for native menu updates
   useEffect(() => {
     // @ts-ignore
     window.electron.ipcRenderer.send('sync:active-show', activeShowId)
   }, [activeShowId])
+
+  // Logic to find next numeric name based on show elements
+  const getNextAvailableName = () => {
+    const existingNumbers = elements
+      .map(e => parseInt(e.name))
+      .filter(n => !isNaN(n))
+    return Math.max(0, ...existingNumbers) + 1
+  }
+
+  // Update slug when elements change or show changes if slug is empty/default
+  useEffect(() => {
+    if ((!slug || slug === '1') && elements.length > 0) {
+      setSlug(getNextAvailableName().toString())
+    }
+  }, [elements, activeShowId])
 
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
@@ -180,36 +202,118 @@ export function Menu() {
     setNumericId(digits.padStart(4, '0'))
   }
 
-  const handleSave = () => console.log('SAVE', { numericId, slug, fieldValues })
-  const handleSaveAs = () => console.log('SAVE AS', { numericId, slug, fieldValues })
-
-  const handleOut = () => {
-    if (!activeShowId || !pgmChannel) return
-    const elementId = selectedElementId || selectedTemplateId
-    if (!elementId) return
-
-    outMutation.mutate({ showId: activeShowId, elementId, channelId: pgmChannel.id })
+  const handleSlugInput = (val: string) => {
+    const digits = val.replace(/\D/g, '')
+    setSlug(digits)
   }
 
-  const handleCont = () => {
-    if (!activeShowId || !pgmChannel) return
-    const elementId = selectedElementId || selectedTemplateId
-    if (!elementId) return
+  const handleSave = async () => {
+    if (!activeShowId || !selectedElementId) return
 
-    contMutation.mutate({ showId: activeShowId, elementId, channelId: pgmChannel.id })
+    try {
+      await updateElementMutation.mutateAsync({
+        showId: activeShowId,
+        elementId: selectedElementId,
+        data: fieldValues
+      })
+      console.log('[Save] Success')
+    } catch (err) {
+      console.error('Save failed:', err)
+      alert('Failed to save element.')
+    }
   }
 
-  const handleTake = () => {
+  const handleSaveAs = async () => {
+    if (!activeShowId || (!selectedElementId && !selectedTemplateId)) return
+
+    try {
+      const templateId = selectedElementId
+        ? elements.find(e => e.id === selectedElementId)?.template_id || ''
+        : selectedTemplateId || ''
+
+      // Determine name: user slug or incremented name
+      let name = slug.trim()
+      if (!name) {
+        name = getNextAvailableName().toString()
+      }
+
+      await createElementMutation.mutateAsync({
+        showId: activeShowId,
+        name,
+        templateId,
+        data: fieldValues
+      })
+
+      // Auto-increment slug for next save
+      const nextSlug = (parseInt(name) || 0) + 1
+      setSlug(nextSlug.toString())
+      console.log('[Save As] Success', name)
+    } catch (err) {
+      console.error('Save As failed:', err)
+      alert('Failed to create new element.')
+    }
+  }
+
+  const handleOut = async () => {
     if (!activeShowId || !pgmChannel) return
+    const isElement = !!selectedElementId
     const elementId = selectedElementId || selectedTemplateId
     if (!elementId) return
 
-    takeMutation.mutate({
-      showId: activeShowId,
-      elementId,
-      channelId: pgmChannel.id,
-      data: fieldValues
-    })
+    try {
+      await outMutation.mutateAsync({
+        showId: activeShowId,
+        elementId,
+        itemType: isElement ? 'element' : 'template',
+        channelId: pgmChannel.id
+      })
+    } catch (err) {
+      console.error('OUT action failed:', err)
+      alert('Failed to trigger OUT. Check server connection.')
+    }
+  }
+
+  const handleCont = async () => {
+    if (!activeShowId || !pgmChannel) return
+    const isElement = !!selectedElementId
+    const elementId = selectedElementId || selectedTemplateId
+    if (!elementId) return
+
+    try {
+      await contMutation.mutateAsync({
+        showId: activeShowId,
+        elementId,
+        itemType: isElement ? 'element' : 'template',
+        channelId: pgmChannel.id
+      })
+    } catch (err) {
+      console.error('CONT action failed:', err)
+      alert('Failed to trigger CONTINUE. Check server connection.')
+    }
+  }
+
+  const handleTake = async () => {
+    if (!activeShowId || !pgmChannel) return
+    const isElement = !!selectedElementId
+    const elementId = selectedElementId || selectedTemplateId
+    if (!elementId) {
+      alert('Please select an element or template first.')
+      return
+    }
+
+    try {
+      await takeMutation.mutateAsync({
+        showId: activeShowId,
+        elementId,
+        itemType: isElement ? 'element' : 'template',
+        channelId: pgmChannel.id,
+        // Templates load with default scene state (empty/null data), elements use field editor values
+        data: isElement ? fieldValues : {}
+      })
+    } catch (err) {
+      console.error('TAKE action failed:', err)
+      alert('Failed to trigger TAKE. Verify engine health.')
+    }
   }
 
   return (
@@ -244,7 +348,7 @@ export function Menu() {
             type="text"
             placeholder="SLUG"
             value={slug}
-            onChange={(e) => setSlug(e.target.value)}
+            onChange={(e) => handleSlugInput(e.target.value)}
             style={{
               backgroundColor: 'rgba(52, 211, 153, 0.05)',
               border: '1px solid var(--glacier-700)',
@@ -262,8 +366,48 @@ export function Menu() {
         </div>
 
         <div style={{ display: 'flex', gap: '6px' }}>
-          <button onClick={handleSave} style={{ padding: '4px 12px', backgroundColor: 'var(--mint-green)', color: 'var(--glacier-950)', border: 'none', borderRadius: '4px', fontSize: '11px', fontWeight: 700, cursor: 'pointer' }}>SAVE</button>
-          <button onClick={handleSaveAs} style={{ padding: '4px 12px', backgroundColor: 'var(--glacier-700)', color: 'var(--glacier-100)', border: 'none', borderRadius: '4px', fontSize: '11px', fontWeight: 700, cursor: 'pointer' }}>SAVE AS</button>
+          <button
+            onClick={handleSave}
+            disabled={!selectedElementId || updateElementMutation.isPending}
+            style={{
+              padding: '4px 12px',
+              backgroundColor: 'var(--mint-green)',
+              color: 'var(--glacier-950)',
+              border: 'none',
+              borderRadius: '4px',
+              fontSize: '11px',
+              fontWeight: 700,
+              cursor: (!selectedElementId || updateElementMutation.isPending) ? 'not-allowed' : 'pointer',
+              opacity: (!selectedElementId || updateElementMutation.isPending) ? 0.5 : 1,
+              display: 'flex',
+              alignItems: 'center',
+              gap: '4px'
+            }}
+          >
+            {updateElementMutation.isPending && <LogoSpinner size={10} />}
+            SAVE
+          </button>
+          <button
+            onClick={handleSaveAs}
+            disabled={(!selectedElementId && !selectedTemplateId) || createElementMutation.isPending}
+            style={{
+              padding: '4px 12px',
+              backgroundColor: 'var(--glacier-700)',
+              color: 'var(--glacier-100)',
+              border: 'none',
+              borderRadius: '4px',
+              fontSize: '11px',
+              fontWeight: 700,
+              cursor: ((!selectedElementId && !selectedTemplateId) || createElementMutation.isPending) ? 'not-allowed' : 'pointer',
+              opacity: ((!selectedElementId && !selectedTemplateId) || createElementMutation.isPending) ? 0.5 : 1,
+              display: 'flex',
+              alignItems: 'center',
+              gap: '4px'
+            }}
+          >
+            {createElementMutation.isPending && <LogoSpinner size={10} />}
+            SAVE AS
+          </button>
         </div>
       </div>
 
@@ -299,9 +443,72 @@ export function Menu() {
         </div>
 
         <div style={{ display: 'flex', gap: '4px' }}>
-          <button onClick={handleOut} style={{ padding: '6px 16px', backgroundColor: '#ef4444', color: '#fff', border: 'none', borderRadius: '4px', fontSize: '11px', fontWeight: 800, cursor: 'pointer', boxShadow: '0 0 10px rgba(239, 68, 68, 0.3)' }}>OUT</button>
-          <button onClick={handleCont} style={{ padding: '6px 16px', backgroundColor: '#3b82f6', color: '#fff', border: 'none', borderRadius: '4px', fontSize: '11px', fontWeight: 800, cursor: 'pointer', boxShadow: '0 0 10px rgba(59, 130, 246, 0.3)' }}>CONT</button>
-          <button onClick={handleTake} style={{ padding: '6px 16px', backgroundColor: 'var(--mint-green)', color: 'var(--glacier-950)', border: 'none', borderRadius: '4px', fontSize: '11px', fontWeight: 800, cursor: 'pointer', boxShadow: '0 0 10px var(--mint-green-alpha)' }}>TAKE</button>
+          <button
+            onClick={handleOut}
+            disabled={outMutation.isPending || (!selectedElementId && !selectedTemplateId)}
+            style={{
+              padding: '6px 16px',
+              backgroundColor: '#ef4444',
+              color: '#fff',
+              border: 'none',
+              borderRadius: '4px',
+              fontSize: '11px',
+              fontWeight: 800,
+              cursor: (outMutation.isPending || (!selectedElementId && !selectedTemplateId)) ? 'not-allowed' : 'pointer',
+              boxShadow: '0 0 10px rgba(239, 68, 68, 0.3)',
+              opacity: (outMutation.isPending || (!selectedElementId && !selectedTemplateId)) ? 0.5 : 1,
+              display: 'flex',
+              alignItems: 'center',
+              gap: '4px'
+            }}
+          >
+            {outMutation.isPending && <LogoSpinner size={12} />}
+            OUT
+          </button>
+          <button
+            onClick={handleCont}
+            disabled={contMutation.isPending || (!selectedElementId && !selectedTemplateId)}
+            style={{
+              padding: '6px 16px',
+              backgroundColor: '#3b82f6',
+              color: '#fff',
+              border: 'none',
+              borderRadius: '4px',
+              fontSize: '11px',
+              fontWeight: 800,
+              cursor: (contMutation.isPending || (!selectedElementId && !selectedTemplateId)) ? 'not-allowed' : 'pointer',
+              boxShadow: '0 0 10px rgba(59, 130, 246, 0.3)',
+              opacity: (contMutation.isPending || (!selectedElementId && !selectedTemplateId)) ? 0.5 : 1,
+              display: 'flex',
+              alignItems: 'center',
+              gap: '4px'
+            }}
+          >
+            {contMutation.isPending && <LogoSpinner size={12} />}
+            CONT
+          </button>
+          <button
+            onClick={handleTake}
+            disabled={takeMutation.isPending || (!selectedElementId && !selectedTemplateId)}
+            style={{
+              padding: '6px 16px',
+              backgroundColor: 'var(--mint-green)',
+              color: 'var(--glacier-950)',
+              border: 'none',
+              borderRadius: '4px',
+              fontSize: '11px',
+              fontWeight: 800,
+              cursor: (takeMutation.isPending || (!selectedElementId && !selectedTemplateId)) ? 'not-allowed' : 'pointer',
+              boxShadow: '0 0 10px var(--mint-green)',
+              opacity: (takeMutation.isPending || (!selectedElementId && !selectedTemplateId)) ? 0.5 : 1,
+              display: 'flex',
+              alignItems: 'center',
+              gap: '4px'
+            }}
+          >
+            {takeMutation.isPending && <LogoSpinner size={12} />}
+            TAKE
+          </button>
         </div>
       </div>
 

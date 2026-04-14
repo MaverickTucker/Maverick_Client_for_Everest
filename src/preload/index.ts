@@ -1,8 +1,12 @@
-const { contextBridge } = require('electron')
+const { contextBridge, ipcRenderer } = require('electron')
 const { electronAPI } = require('@electron-toolkit/preload')
 
 // Custom APIs for renderer
-const api = {}
+const api = {
+    quitApp: () => ipcRenderer.send('app:quit'),
+    saveShowExport: (data: string, filename: string) => ipcRenderer.invoke('dialog:saveShow', data, filename),
+    importShowFile: () => ipcRenderer.invoke('dialog:importShow')
+}
 
 // Use `contextBridge` APIs to expose Electron APIs to renderer
 try {

@@ -8,7 +8,9 @@ const ALLOWED_CHANNELS = {
     'hardware:button': true,
     'playout:take': true,
     'playout:out': true,
-    'dialog:openFile': true
+    'dialog:openFile': true,
+    'dialog:saveShow': true,
+    'dialog:importShow': true
 }
 
 // Validate IPC channel access
@@ -150,5 +152,77 @@ export function setupSecureIPC(): void {
         }
 
         return result.filePaths
+    })
+
+    // Save show export handler
+    ipcMain.handle('dialog:saveShow', async (_event: IpcMainInvokeEvent, data: string, filename: string) => {
+        if (!validateChannel('dialog:saveShow')) {
+            throw new Error('Unauthorized channel')
+        }
+
+        const { dialog, BrowserWindow } = require('electron')
+        const fs = require('fs')
+        const focusedWindow = BrowserWindow.getFocusedWindow()
+
+        if (!focusedWindow) {
+            throw new Error('No focused window')
+        }
+
+        const result = await dialog.showSaveDialog(focusedWindow, {
+            title: 'Export Show Configuration',
+            defaultPath: filename,
+            filters: [
+                { name: 'JSON Configuration', extensions: ['json'] },
+                { name: 'All Files', extensions: ['*'] }
+            ]
+        })
+
+        if (result.canceled || !result.filePath) {
+            return { canceled: true }
+        }
+
+        try {
+            fs.writeFileSync(result.filePath, data, 'utf-8')
+            return { success: true, filePath: result.filePath }
+        } catch (error) {
+            console.error('File save error:', error)
+            throw new Error('Failed to save file')
+        }
+    })
+
+    // Import show handler
+    ipcMain.handle('dialog:importShow', async (_event: IpcMainInvokeEvent) => {
+        if (!validateChannel('dialog:importShow')) {
+            throw new Error('Unauthorized channel')
+        }
+
+        const { dialog, BrowserWindow } = require('electron')
+        const fs = require('fs')
+        const focusedWindow = BrowserWindow.getFocusedWindow()
+
+        if (!focusedWindow) {
+            throw new Error('No focused window')
+        }
+
+        const result = await dialog.showOpenDialog(focusedWindow, {
+            title: 'Import Show Configuration',
+            properties: ['openFile'],
+            filters: [
+                { name: 'JSON Configuration', extensions: ['json'] },
+                { name: 'All Files', extensions: ['*'] }
+            ]
+        })
+
+        if (result.canceled || result.filePaths.length === 0) {
+            return { canceled: true }
+        }
+
+        try {
+            const content = fs.readFileSync(result.filePaths[0], 'utf-8')
+            return { success: true, content: JSON.parse(content) }
+        } catch (error) {
+            console.error('File read error:', error)
+            throw new Error('Failed to read or parse file')
+        }
     })
 }

@@ -1,6 +1,6 @@
 import { useEffect } from 'react'
 import { useConfigStore } from '../stores/configStore'
-import { User, Tv, Radio } from 'lucide-react'
+import { User, Tv } from 'lucide-react'
 
 export function StatusBar() {
     const {
@@ -12,7 +12,8 @@ export function StatusBar() {
         setSelectedProfileId,
         fetchProfiles,
         fetchChannels,
-        initializeEngineWS
+        initializeEngineWS,
+        isServerConnected
     } = useConfigStore()
 
     useEffect(() => {
@@ -134,10 +135,25 @@ export function StatusBar() {
                 </div>
             </div>
 
-            {/* Connection Mode Indicator */}
-            <div style={{ display: 'flex', alignItems: 'center', gap: '8px', color: 'var(--mint-green)', opacity: 0.8 }}>
-                <Radio size={14} />
-                <span style={{ fontWeight: 700, letterSpacing: '0.05em' }}>LIVE BROADCAST</span>
+            {/* Connection Status Indicator */}
+            <div style={{
+                display: 'flex',
+                alignItems: 'center',
+                gap: '8px',
+                color: isServerConnected ? 'var(--mint-green)' : '#ef4444',
+                opacity: 0.9,
+                fontWeight: 700,
+                letterSpacing: '0.05em',
+                transition: 'all 0.3s ease'
+            }}>
+                <div style={{
+                    width: '6px',
+                    height: '6px',
+                    borderRadius: '50%',
+                    backgroundColor: isServerConnected ? 'var(--mint-green)' : '#ef4444',
+                    boxShadow: isServerConnected ? '0 0 8px var(--mint-green)' : '0 0 8px #ef4444'
+                }} />
+                <span>MRS: {isServerConnected ? 'ONLINE' : 'OFFLINE'}</span>
             </div>
         </div>
     )

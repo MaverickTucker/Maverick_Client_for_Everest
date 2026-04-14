@@ -17,35 +17,37 @@ export interface SceneInfo {
     directors?: any[]
 }
 
-export function useTemplateDetails(showId: string | null, templateId: string | null, path: string | null) {
+export function useTemplateDetails(showId: string | null, templateId: string | null) {
     return useQuery<SceneInfo>({
-        queryKey: ['template-details', showId, templateId, path],
+        queryKey: ['template-details', showId, templateId],
         queryFn: async () => {
-            if (!showId || !templateId || !path) throw new Error('Missing parameters for template details')
+            if (!showId || !templateId) throw new Error('Missing parameters for template details')
 
-            // New hierarchical POST endpoint with path in body
-            const response = await secureAxios.post(`/api/shows/${showId}/templates/${templateId}/scene-info`, {
-                path: path
-            })
+            // New hierarchical GET endpoint as per user 
+            const response = await secureAxios.get(`/api/shows/${showId}/templates/${templateId}/scene-info`)
 
             console.log('[useTemplateDetails] Raw Data:', response.data)
 
             let data = response.data
-            // Handle common MRS response wrappers: { data: ... } or { scene_info: ... }
+            // Handle common MRS response wrappers: { data: ... } or { scene_info: ... } or { info: ... }
             if (data.data) data = data.data
             if (data.scene_info) data = data.scene_info
+            if (data.info) data = data.info
 
-            // Normalize: Ensure each tag has a 'tag' property (mapping tag_id -> tag)
-            if (data.tags && Array.isArray(data.tags)) {
-                data.tags = data.tags.map((t: any) => ({
+            // Normalize tags/fields: Ensure we have a 'tags' array
+            const tagsSource = data.tags || data.fields || []
+            if (Array.isArray(tagsSource)) {
+                data.tags = tagsSource.map((t: any) => ({
                     ...t,
-                    tag: t.tag || t.tag_id // Map tag_id to tag for Layout.tsx compatibility
+                    tag: t.tag || t.tag_id || t.TagId || t.name // Broad mapping for compatibility
                 }))
+            } else {
+                data.tags = []
             }
 
             return data
         },
-        enabled: !!showId && !!templateId && !!path,
+        enabled: !!showId && !!templateId,
         staleTime: 60000 // Cache for 1 minute
     })
 }

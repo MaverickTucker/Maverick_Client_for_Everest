@@ -45,6 +45,7 @@ interface ConfigState {
     updateProfile: (id: string, updates: Partial<Profile>) => Promise<void>
     initializeEngineWS: () => void
     engineSocket: WebSocket | null
+    isServerConnected: boolean
 }
 
 export const useConfigStore = create<ConfigState>()(
@@ -125,6 +126,7 @@ export const useConfigStore = create<ConfigState>()(
             },
 
             engineSocket: null,
+            isServerConnected: false,
 
             initializeEngineWS: () => {
                 if (get().engineSocket) return
@@ -160,14 +162,20 @@ export const useConfigStore = create<ConfigState>()(
                     }
                 }
 
-                socket.onopen = () => console.log('[WS Engines] Connected')
+                socket.onopen = () => {
+                    console.log('[WS Engines] Connected')
+                    set({ isServerConnected: true })
+                }
                 socket.onclose = () => {
                     console.log('[WS Engines] Disconnected')
-                    set({ engineSocket: null })
+                    set({ engineSocket: null, isServerConnected: false })
                     // Reconnect after 3s
                     setTimeout(() => get().initializeEngineWS(), 3000)
                 }
-                socket.onerror = (err) => console.error('[WS Engines] Error:', err)
+                socket.onerror = (err) => {
+                    console.error('[WS Engines] Error:', err)
+                    set({ isServerConnected: false })
+                }
 
                 set({ engineSocket: socket as any })
             }

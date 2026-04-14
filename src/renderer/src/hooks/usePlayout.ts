@@ -8,12 +8,14 @@ export const useTake = () => {
         mutationFn: async (params: {
             showId: string
             elementId: string
+            itemType: 'template' | 'element'
             channelId: string
             layer?: number
             data?: any
         }) => {
+            const pathType = params.itemType === 'template' ? 'templates' : 'elements'
             const response = await secureAxios.post(
-                `/api/shows/${params.showId}/elements/${params.elementId}/take`,
+                `/api/shows/${params.showId}/${pathType}/${params.elementId}/take`,
                 params.data || null,
                 { params: { channel_id: params.channelId, layer: params.layer } }
             )
@@ -32,10 +34,12 @@ export const useOut = () => {
         mutationFn: async (params: {
             showId: string
             elementId: string
+            itemType: 'template' | 'element'
             channelId: string
         }) => {
+            const pathType = params.itemType === 'template' ? 'templates' : 'elements'
             const response = await secureAxios.post(
-                `/api/shows/${params.showId}/elements/${params.elementId}/out`,
+                `/api/shows/${params.showId}/${pathType}/${params.elementId}/out`,
                 null,
                 { params: { channel_id: params.channelId } }
             )
@@ -54,10 +58,12 @@ export const useCont = () => {
         mutationFn: async (params: {
             showId: string
             elementId: string
+            itemType: 'template' | 'element'
             channelId: string
         }) => {
+            const pathType = params.itemType === 'template' ? 'templates' : 'elements'
             const response = await secureAxios.post(
-                `/api/shows/${params.showId}/elements/${params.elementId}/cont`,
+                `/api/shows/${params.showId}/${pathType}/${params.elementId}/cont`,
                 null,
                 { params: { channel_id: params.channelId } }
             )
