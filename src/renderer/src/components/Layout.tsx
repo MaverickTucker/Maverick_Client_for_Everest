@@ -1,4 +1,5 @@
 import { Menu } from './Menu'
+import { FieldEditorPanel } from './FieldEditorPanel'
 import { Panel, Group as PanelGroup, Separator as PanelResizeHandle } from 'react-resizable-panels'
 import { useShowStore } from '../stores/showStore'
 import { useSelectionStore } from '../stores/selectionStore'
@@ -30,13 +31,11 @@ export function Layout() {
     setFocusedTemplateId,
     focusedElementId,
     setFocusedElementId,
-    fieldValues,
     setFieldValues,
     templateOverrides,
     elementOverrides,
     updateTemplateOverride,
-    updateElementOverride,
-    updateField
+    updateElementOverride
   } = useSelectionStore()
 
   const { data: templates, isLoading: templatesLoading } = useTemplates(activeShowId)
@@ -52,7 +51,7 @@ export function Layout() {
     }
   }, [selectedTemplateId, templates, selectedTemplate, setSelectedTemplateId])
 
-  const { data: templateDetails, isLoading: detailsLoading } = useTemplateDetails(
+  const { data: templateDetails } = useTemplateDetails(
     activeShowId,
     selectedTemplateId
   )
@@ -67,7 +66,7 @@ export function Layout() {
       })
       setFieldValues(initial)
     }
-  }, [selectedTemplateId, templateDetails, setFieldValues])
+  }, [selectedTemplateId, !!templateDetails]) // Fire when selection changes OR data first becomes available
 
   // Handle element selection - load saved data
   useEffect(() => {
@@ -82,11 +81,8 @@ export function Layout() {
         setFieldValues(currentData)
       }
     }
-  }, [selectedElementId, elements, setFieldValues])
+  }, [selectedElementId, !!elements]) // Fire when selection changes OR elements first become available
 
-  const handleFieldChange = (tag: string, value: string) => {
-    updateField(tag, value)
-  }
 
 
   return (
@@ -321,51 +317,7 @@ export function Layout() {
 
                 {/* Field Editor */}
                 <Panel defaultSize={50} minSize={20}>
-                  <div style={{ height: 'calc(100% - 8px)', overflow: 'hidden', backgroundColor: 'rgba(49, 72, 89, 0.85)', backdropFilter: 'blur(4px)', border: '1px solid var(--glacier-700)', margin: '4px', borderRadius: '4px', display: 'flex', flexDirection: 'column' }}>
-                    <div style={{ backgroundColor: 'var(--glacier-950)', padding: '8px 16px', borderBottom: '1px solid var(--glacier-700)', flexShrink: 0, display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                      <h3 style={{ margin: 0, fontSize: '14px', fontWeight: 600 }}>Field Editor</h3>
-                      {(selectedTemplateId || selectedElementId) && (
-                        <button
-                          onClick={() => {
-                            setSelectedTemplateId(null)
-                            setSelectedElementId(null)
-                          }}
-                          style={{ background: 'transparent', border: 'none', color: 'var(--glacier-300)', cursor: 'pointer', fontSize: '11px' }}
-                        >
-                          Clear
-                        </button>
-                      )}
-                    </div>
-
-                    <div style={{ flex: 1, overflow: 'auto', padding: '12px', display: 'flex', flexDirection: 'column', gap: '12px' }}>
-                      {(!selectedTemplateId && !selectedElementId) ? (
-                        <div style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#71717a', fontSize: '14px', textAlign: 'center', padding: '24px' }}>
-                          Double-click a template or element to edit its fields
-                        </div>
-                      ) : detailsLoading ? (
-                        <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', padding: '40px', gap: '12px' }}>
-                          <LogoSpinner size={24} />
-                          <span style={{ fontSize: '12px', color: 'var(--glacier-200)' }}>Loading fields...</span>
-                        </div>
-                      ) : Object.keys(fieldValues).length > 0 ? (
-                        Object.keys(fieldValues).map(tag => (
-                          <div key={tag} style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
-                            <label style={{ fontSize: '11px', fontWeight: 600, color: 'var(--glacier-200)', textTransform: 'uppercase' }}>{tag}</label>
-                            <input
-                              type="text"
-                              value={fieldValues[tag] || ''}
-                              onChange={(e) => handleFieldChange(tag, e.target.value)}
-                              style={{ backgroundColor: 'var(--glacier-900)', border: '1px solid var(--glacier-700)', borderRadius: '4px', padding: '8px 10px', color: '#fff', fontSize: '13px', outline: 'none' }}
-                              onFocus={(e) => e.target.style.borderColor = 'var(--mint-green)'}
-                              onBlur={(e) => e.target.style.borderColor = 'var(--glacier-700)'}
-                            />
-                          </div>
-                        ))
-                      ) : (
-                        <div style={{ fontSize: '13px', color: '#71717a', textAlign: 'center', padding: '20px' }}>No editable fields found.</div>
-                      )}
-                    </div>
-                  </div>
+                  <FieldEditorPanel />
                 </Panel>
 
                 <ResizeHandle />

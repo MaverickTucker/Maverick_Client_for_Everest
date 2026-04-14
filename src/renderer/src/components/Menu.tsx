@@ -301,9 +301,19 @@ export function Menu() {
   }
 
   const handleTake = async () => {
+    // Get latest values directly from the store to avoid any stale closures
+    const state = useSelectionStore.getState()
+    const {
+      selectedElementId: latestElementId,
+      selectedTemplateId: latestTemplateId,
+      fieldValues: latestFieldValues,
+      elementOverrides,
+      templateOverrides
+    } = state
+
     if (!activeShowId || !pgmChannel) return
-    const isElement = !!selectedElementId
-    const elementId = selectedElementId || selectedTemplateId
+    const isElement = !!latestElementId
+    const elementId = latestElementId || latestTemplateId
     if (!elementId) {
       alert('Please select an element or template first.')
       return
@@ -313,6 +323,9 @@ export function Menu() {
     const channelId = override?.channelId || pgmChannel.id
     const layer = override?.layer || 1
 
+    console.log(`[Take] Action triggered for ${isElement ? 'element' : 'template'}: ${elementId}`)
+    console.log('[Take] Field Values:', latestFieldValues)
+
     try {
       await takeMutation.mutateAsync({
         showId: activeShowId,
@@ -320,8 +333,7 @@ export function Menu() {
         itemType: isElement ? 'element' : 'template',
         channelId,
         layer,
-        // Templates load with default scene state (empty/null data), elements use field editor values
-        data: isElement ? fieldValues : {}
+        data: latestFieldValues
       })
     } catch (err) {
       console.error('TAKE action failed:', err)
