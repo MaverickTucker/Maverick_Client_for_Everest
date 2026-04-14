@@ -19,7 +19,7 @@ export function ConnectPage() {
 
                 <img src={logo} alt="Maverick Logo" style={{ width: '80px', height: '80px', filter: 'drop-shadow(0 0 16px var(--mint-green))', marginBottom: '24px', borderRadius: '8px' }} />
 
-                <h1 style={{ fontSize: '24px', fontWeight: 700, margin: '0 0 8px 0', letterSpacing: '0.025em' }}>Connect to Maverick</h1>
+                <h1 style={{ fontSize: '24px', fontWeight: 700, margin: '0 0 8px 0', letterSpacing: '0.025em', textAlign: 'center' }}>CONNECT TO MRS</h1>
                 <p style={{ color: 'var(--glacier-200)', fontSize: '14px', marginBottom: '32px', textAlign: 'center' }}>
                     Enter the Maverick Relay Server connection details below.
                 </p>

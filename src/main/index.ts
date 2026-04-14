@@ -88,6 +88,7 @@ function updateMenu(activeShowId: string | null) {
 function createWindow(): void {
     // Create the browser window.
     mainWindow = new BrowserWindow({
+        title: 'MAVERICK RELAY CLIENT FOR EVEREST',
         width: 1200,
         height: 800,
         show: false,

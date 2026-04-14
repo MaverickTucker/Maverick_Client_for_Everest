@@ -354,7 +354,7 @@ export function Menu() {
               border: '1px solid var(--glacier-700)',
               borderRadius: '4px',
               padding: '4px 8px',
-              color: 'var(--mint-green)',
+              color: 'var(--glacier-100)',
               fontSize: '14px',
               fontWeight: 700,
               width: '60px',
@@ -371,8 +371,8 @@ export function Menu() {
             disabled={!selectedElementId || updateElementMutation.isPending}
             style={{
               padding: '4px 12px',
-              backgroundColor: 'var(--mint-green)',
-              color: 'var(--glacier-950)',
+              backgroundColor: 'var(--glacier-700)',
+              color: 'var(--glacier-100)',
               border: 'none',
               borderRadius: '4px',
               fontSize: '11px',
@@ -418,13 +418,13 @@ export function Menu() {
         <div style={{
           display: 'flex',
           alignItems: 'center',
-          backgroundColor: 'rgba(0,0,0,0.2)',
+          backgroundColor: 'rgba(52, 211, 153, 0.05)',
           border: '1px solid var(--glacier-700)',
           borderRadius: '4px',
-          padding: '2px 8px',
+          padding: '4px 8px',
           gap: '8px'
         }}>
-          <span style={{ fontSize: '12px', color: 'var(--glacier-500)', fontWeight: 700 }}>#</span>
+          <span style={{ fontSize: '13px', color: 'var(--glacier-500)', fontWeight: 700 }}>#</span>
           <input
             type="text"
             value={numericId}
@@ -432,11 +432,12 @@ export function Menu() {
             style={{
               background: 'transparent',
               border: 'none',
-              color: 'var(--mint-green)',
+              color: 'var(--glacier-100)',
               fontSize: '14px',
               fontWeight: 700,
-              width: '60px',
+              width: '45px',
               outline: 'none',
+              textAlign: 'center',
               fontFamily: 'monospace'
             }}
           />
