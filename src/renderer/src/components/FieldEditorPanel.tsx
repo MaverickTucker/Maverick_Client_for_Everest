@@ -1,6 +1,6 @@
 import { useSelectionStore } from '../stores/selectionStore'
 import { useShowStore } from '../stores/showStore'
-import { useTemplateDetails } from '../hooks/useTemplateDetails'
+import { useTemplates } from '../hooks/useTemplates'
 import { LogoSpinner } from './LogoSpinner'
 
 export function FieldEditorPanel() {
@@ -14,10 +14,7 @@ export function FieldEditorPanel() {
     updateField
   } = useSelectionStore()
 
-  const { isLoading: detailsLoading } = useTemplateDetails(
-    activeShowId,
-    selectedTemplateId
-  )
+  const { isLoading: templatesLoading } = useTemplates(activeShowId)
 
   const handleFieldChange = (tag: string, value: string) => {
     updateField(tag, value)
@@ -47,7 +44,7 @@ export function FieldEditorPanel() {
           <div style={{ flex: 1, height: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#71717a', fontSize: '14px', textAlign: 'center', padding: '24px' }}>
             Double-click a template or element to edit its fields
           </div>
-        ) : (selectedTemplateId && detailsLoading) ? (
+        ) : (selectedTemplateId && templatesLoading) ? (
           <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', padding: '40px', gap: '12px' }}>
             <LogoSpinner size={24} />
             <span style={{ fontSize: '12px', color: 'var(--glacier-200)' }}>Loading fields...</span>

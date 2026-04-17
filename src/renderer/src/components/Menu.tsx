@@ -153,12 +153,18 @@ export function Menu() {
           setImportItems(prev => prev.map(i => i.id === item.id ? { ...i, status: 'importing' } : i))
 
           try {
+            // Get the CURRENT show ID from store (not the closure value)
+            const currentShowId = useShowStore.getState().activeShowId
+            if (!currentShowId) {
+              throw new Error('No active show selected')
+            }
+
             const { host, port } = useConnectionStore.getState()
             const baseUrl = `http://${host.toLowerCase()}:${port}`
             const apiKey = import.meta.env.VITE_MRS_API_KEY || ''
 
-            // Hierarchical endpoint: /api/shows/{show_id}/templates/import-advanced
-            const importUrl = `${baseUrl}/api/shows/${activeShowId}/templates/import-advanced?name=${encodeURIComponent(item.name)}&path=${encodeURIComponent(item.path)}`
+            // Hierarchical endpoint: /api/shows/${currentShowId}/templates/scene-importv1
+            const importUrl = `${baseUrl}/api/shows/${currentShowId}/templates/scene-importv1?name=${encodeURIComponent(item.name)}&path=${encodeURIComponent(item.path)}`
 
             const response = await fetch(importUrl, {
               method: 'POST',
@@ -187,7 +193,10 @@ export function Menu() {
 
         if (!hasErrorInBatch) {
           console.log('[Import] Success! Refreshing templates...')
-          queryClient.invalidateQueries({ queryKey: ['templates', activeShowId] })
+          const currentShowId = useShowStore.getState().activeShowId
+          if (currentShowId) {
+            queryClient.invalidateQueries({ queryKey: ['templates', currentShowId] })
+          }
           setTimeout(() => {
             setIsImportModalOpen(false)
           }, 1500)

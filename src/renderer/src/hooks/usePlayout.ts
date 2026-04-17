@@ -74,3 +74,27 @@ export const useCont = () => {
         }
     })
 }
+
+export const useRead = () => {
+    const queryClient = useQueryClient()
+
+    return useMutation({
+        mutationFn: async (params: {
+            showId: string
+            elementId: string
+            itemType: 'template' | 'element'
+            channelId: string
+        }) => {
+            const pathType = params.itemType === 'template' ? 'templates' : 'elements'
+            const response = await secureAxios.post(
+                `/api/shows/${params.showId}/${pathType}/${params.elementId}/read`,
+                null,
+                { params: { channel_id: params.channelId } }
+            )
+            return response.data
+        },
+        onSuccess: () => {
+            queryClient.invalidateQueries({ queryKey: ['channel'] })
+        }
+    })
+}

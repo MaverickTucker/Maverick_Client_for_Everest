@@ -5,12 +5,15 @@ import { useShowStore } from '../stores/showStore'
 import { useSelectionStore } from '../stores/selectionStore'
 import { useTemplates } from '../hooks/useTemplates'
 import { useConfigStore } from '../stores/configStore'
-import { useElements } from '../hooks/useElements'
-import { useTemplateDetails } from '../hooks/useTemplateDetails'
-import { Box, Layers } from 'lucide-react'
+import { useElements, Element } from '../hooks/useElements'
+import { Box, Layers, Play, SkipForward, Square, Eye, Trash2 } from 'lucide-react'
 import { LogoSpinner } from './LogoSpinner'
-import { useEffect } from 'react'
+import { useEffect, useState } from 'react'
 import { StatusBar } from './StatusBar'
+import { useTake, useOut, useCont, useRead } from '../hooks/usePlayout'
+import { useDeleteElement } from '../hooks/useElementActions'
+import { useDeleteTemplate, Template } from '../hooks/useTemplates'
+import { ContextMenu, ContextMenuItem } from './ContextMenu'
 
 function ResizeHandle() {
   return (
@@ -41,6 +44,17 @@ export function Layout() {
   const { data: templates, isLoading: templatesLoading } = useTemplates(activeShowId)
   const { data: elements, isLoading: elementsLoading } = useElements(activeShowId)
 
+  // Hooks
+  const takeMutation = useTake()
+  const contMutation = useCont()
+  const outMutation = useOut()
+  const readMutation = useRead()
+  const deleteElementMutation = useDeleteElement()
+  const deleteTemplateMutation = useDeleteTemplate()
+
+  // State
+  const [contextMenu, setContextMenu] = useState<{ x: number, y: number, items: ContextMenuItem[] } | null>(null)
+
   // Find the selected template to get its path for the scene-info call
   const selectedTemplate = templates?.find(t => String(t.id) === String(selectedTemplateId))
 
@@ -51,18 +65,16 @@ export function Layout() {
     }
   }, [selectedTemplateId, templates, selectedTemplate, setSelectedTemplateId])
 
-  const { data: templateDetails } = useTemplateDetails(
-    activeShowId,
-    selectedTemplateId
-  )
+  // Use scene_info from the template directly (already included in the templates response)
+  const templateDetails = selectedTemplate?.scene_info
 
   // Handle template details loading
   useEffect(() => {
     if (selectedTemplateId && templateDetails?.tags) {
       const initial: Record<string, string> = {}
       templateDetails.tags.forEach(tag => {
-        const key = tag.tag || tag.tag_id
-        initial[key] = tag.default || ''
+        const key = tag.tag_id
+        initial[key] = ''
       })
       setFieldValues(initial)
     }
@@ -82,6 +94,83 @@ export function Layout() {
       }
     }
   }, [selectedElementId, !!elements]) // Fire when selection changes OR elements first become available
+
+  // Context Menu Handlers
+  const handleContextMenu = (
+    e: React.MouseEvent,
+    type: 'template' | 'element',
+    item: Template | Element
+  ) => {
+    e.preventDefault()
+    if (!activeShowId) return
+
+    const override = type === 'template' ? templateOverrides[item.id] : elementOverrides[item.id]
+    const channelId = override?.channelId || pgmChannel?.id || ''
+    const layer = override?.layer || 1
+
+    const items: ContextMenuItem[] = [
+      {
+        label: 'Take',
+        icon: <Play size={14} />,
+        onClick: () => takeMutation.mutate({
+          showId: activeShowId,
+          elementId: item.id,
+          itemType: type,
+          channelId,
+          layer,
+          data: type === 'element' ? (item as Element).data : {}
+        })
+      },
+      {
+        label: 'Continue',
+        icon: <SkipForward size={14} />,
+        onClick: () => contMutation.mutate({
+          showId: activeShowId,
+          elementId: item.id,
+          itemType: type,
+          channelId
+        })
+      },
+      {
+        label: 'Out',
+        icon: <Square size={14} />,
+        onClick: () => outMutation.mutate({
+          showId: activeShowId,
+          elementId: item.id,
+          itemType: type,
+          channelId
+        })
+      },
+      {
+        label: 'Read',
+        icon: <Eye size={14} />,
+        onClick: () => readMutation.mutate({
+          showId: activeShowId,
+          elementId: item.id,
+          itemType: type,
+          channelId
+        })
+      },
+      {
+        label: 'Delete',
+        icon: <Trash2 size={14} />,
+        variant: 'danger',
+        onClick: () => {
+          if (window.confirm(`Are you sure you want to delete this ${type}?`)) {
+            if (type === 'template') {
+              deleteTemplateMutation.mutate({ showId: activeShowId, templateId: item.id })
+              if (selectedTemplateId === item.id) setSelectedTemplateId(null)
+            } else {
+              deleteElementMutation.mutate({ showId: activeShowId, elementId: item.id })
+              if (selectedElementId === item.id) setSelectedElementId(null)
+            }
+          }
+        }
+      }
+    ]
+
+    setContextMenu({ x: e.clientX, y: e.clientY, items })
+  }
 
 
 
@@ -133,6 +222,7 @@ export function Layout() {
                               key={t.id}
                               onClick={() => setFocusedTemplateId(t.id)}
                               onDoubleClick={() => setSelectedTemplateId(t.id)}
+                              onContextMenu={(e) => handleContextMenu(e, 'template', t)}
                               style={{
                                 padding: '4px 12px',
                                 backgroundColor: isSelected
@@ -234,6 +324,7 @@ export function Layout() {
                               key={e.id}
                               onClick={() => setFocusedElementId(e.id)}
                               onDoubleClick={() => setSelectedElementId(e.id)}
+                              onContextMenu={(evt) => handleContextMenu(evt, 'element', e)}
                               style={{
                                 padding: '4px 12px',
                                 backgroundColor: isSelected
@@ -341,6 +432,14 @@ export function Layout() {
         </div>
       )}
       <StatusBar />
+      {contextMenu && (
+        <ContextMenu
+          x={contextMenu.x}
+          y={contextMenu.y}
+          items={contextMenu.items}
+          onClose={() => setContextMenu(null)}
+        />
+      )}
     </div>
   )
 }

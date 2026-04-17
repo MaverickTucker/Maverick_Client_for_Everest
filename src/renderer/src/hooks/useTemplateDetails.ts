@@ -33,6 +33,8 @@ export function useTemplateDetails(showId: string | null, templateId: string | n
             if (data.data) data = data.data
             if (data.scene_info) data = data.scene_info
             if (data.info) data = data.info
+            // Handle discovery wrapper (nested structure from engine response)
+            if (data.discovery) data = data.discovery
 
             // Normalize tags/fields: Ensure we have a 'tags' array
             const tagsSource = data.tags || data.fields || []

@@ -35,3 +35,17 @@ export function useUpdateElement() {
         }
     })
 }
+
+export function useDeleteElement() {
+    const queryClient = useQueryClient()
+
+    return useMutation({
+        mutationFn: async (params: { showId: string; elementId: string }) => {
+            const response = await secureAxios.delete(`/api/shows/${params.showId}/elements/${params.elementId}`)
+            return response.data
+        },
+        onSuccess: (_, variables) => {
+            queryClient.invalidateQueries({ queryKey: ['elements', variables.showId] })
+        }
+    })
+}

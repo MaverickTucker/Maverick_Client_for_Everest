@@ -32,8 +32,10 @@ Interactive documentation is available at `https://localhost:8188/docs`.
 
 #### 📽️ Templates
 Engine-agnostic structural definitions.
-- **Import Advanced**: `POST /api/templates/import-advanced?show_id={id}&name={name}&path={path}`
+- **Import Scene**: `POST /api/shows/{id}/templates/scene-importv1?name={name}&path={path}`
 - **List (Filtered)**: `GET /api/templates?show_id={id}`
+- **Read (Preview)**: `POST /api/shows/{id}/templates/{id}/read?channel_id={ch_id}`
+- **Delete Template**: `DELETE /api/shows/{id}/templates/{id}`
 - **Get Scene Info**: `GET /api/templates/{id}/scene-info` (Metadata Discovery)
 - **Routed Take (Template)**: `POST /api/shows/{id}/templates/{id}/take?channel_id={ch_id}&layer=2`
 - **Get/Update/Delete**: `GET|PUT|DELETE /api/templates/{id}`
@@ -43,6 +45,8 @@ Engine-agnostic structural definitions.
 - **List (Filtered)**: `GET /api/elements?show_id={id}`
 - **Get/Update/Delete/Patch**: `GET|PUT|DELETE|PATCH /api/elements/{id}`
 - **Duplicate (Save As)**: `POST /api/elements/{id}/duplicate`
+- **Read (Preview)**: `POST /api/shows/{id}/elements/{id}/read?channel_id={ch_id}`
+- **Delete Element**: `DELETE /api/shows/{id}/elements/{id}`
 
 ### 📦 ElementGroups
 - **Create**: `POST /api/element-groups`
