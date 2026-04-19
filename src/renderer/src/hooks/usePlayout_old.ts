@@ -1,4 +1,4 @@
-import { useMutation, useQueryClient } from '@tanstack/react-query'
+﻿import { useMutation, useQueryClient } from '@tanstack/react-query'
 import { secureAxios } from '../api/secure-axios'
 
 export const useTake = () => {
@@ -17,23 +17,15 @@ export const useTake = () => {
             data?: any
         }) => {
             const pathType = params.itemType === 'template' ? 'templates' : 'elements'
-
-            const body = {
-                name: params.name || '',
-                template_id: params.templateId || '',
-                data: params.data
-            }
-
-            console.log(`[useTake] POST /api/shows/${params.showId}/${pathType}/${params.elementId}/take`, {
-                itemType: params.itemType,
-                channelId: params.channelId,
-                layer: params.layer,
-                body
-            })
-
             const response = await secureAxios.post(
                 `/api/shows/${params.showId}/${pathType}/${params.elementId}/take`,
-                body,
+                params.itemType === 'template'
+                    ? (params.data || null)
+                    : {
+                        name: params.itemType === 'element' ? (params as any).name : '',
+                        template_id: params.itemType === 'element' ? (params as any).templateId : '',
+                        data: params.data
+                    },
                 { params: { channel_id: params.channelId, layer: params.layer } }
             )
             return response.data

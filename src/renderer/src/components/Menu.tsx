@@ -408,6 +408,8 @@ export function Menu() {
     try {
       const { name, templateId, container } = getMeta(elementId, isElement ? 'element' : 'template')
 
+      console.log(`[Take] Metadata Resolved: name="${name}", templateId="${templateId}", container="${container}"`)
+
       await takeMutation.mutateAsync({
         showId: activeShowId,
         elementId,

@@ -7,7 +7,7 @@ import { useConfigStore } from '../stores/configStore'
 import { Element } from '../hooks/useElements'
 import { Box, Layers, Play, SkipForward, Square, Eye, Trash2 } from 'lucide-react'
 import { LogoSpinner } from './LogoSpinner'
-import { useEffect, useState } from 'react'
+import { useEffect, useState, useRef } from 'react'
 import { StatusBar } from './StatusBar'
 import { useTake, useOut, useCont, useRead, useUpdatePlayout } from '../hooks/usePlayout'
 import { useDeleteElement } from '../hooks/useElementActions'
@@ -73,21 +73,32 @@ export function Layout() {
   const templateDetails = selectedTemplate?.scene_info
 
   // Handle template details loading
+  const lastInitializedTemplateId = useRef<string | null>(null)
+
   useEffect(() => {
     if (selectedTemplateId && templateDetails?.tags) {
-      const initial: Record<string, string> = {}
+      // Only initialize if we haven't initialized THIS template for THIS selection session
+      // or if a reload was forced (via selectionVersion)
+      if (lastInitializedTemplateId.current !== selectedTemplateId + selectionVersion) {
+        const initial: Record<string, string> = {}
 
-      // Try to find default values in the schema first
-      const schemaTags = selectedTemplate?.schema?.tags || []
+        // Try to find default values in the schema first
+        const schemaTags = selectedTemplate?.schema?.tags || []
 
-      templateDetails.tags.forEach(tag => {
-        const key = tag.tag_id
-        const schemaTag = schemaTags.find((st: any) => st.tag_id === key)
-        initial[key] = schemaTag ? String(schemaTag.value || '') : ''
-      })
-      setFieldValues(initial)
+        templateDetails.tags.forEach(tag => {
+          const key = tag.tag_id
+          const schemaTag = schemaTags.find((st: any) => st.tag_id === key)
+          initial[key] = schemaTag ? String(schemaTag.value || '') : ''
+        })
+
+        console.log(`[Layout] Initializing template field values for ${selectedTemplateId}`)
+        setFieldValues(initial)
+        lastInitializedTemplateId.current = selectedTemplateId + selectionVersion
+      }
+    } else if (!selectedTemplateId) {
+      lastInitializedTemplateId.current = null
     }
-  }, [selectedTemplateId, !!templateDetails, selectionVersion, selectedTemplate?.schema]) // Added schema to deps
+  }, [selectedTemplateId, !!templateDetails, selectionVersion, selectedTemplate?.schema])
 
   // Handle element selection - load saved data
   useEffect(() => {

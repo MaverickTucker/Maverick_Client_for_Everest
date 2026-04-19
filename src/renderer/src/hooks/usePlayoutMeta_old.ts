@@ -1,4 +1,4 @@
-import { useElements, Element } from './useElements'
+﻿import { useElements, Element } from './useElements'
 import { useTemplates, Template } from './useTemplates'
 
 export interface PlayoutMeta {
@@ -33,7 +33,7 @@ export function usePlayoutMeta(showId: string | null) {
         return {
             selectedElement: selectedElement || null,
             selectedTemplate,
-            name: selectedElement?.name || selectedTemplate?.name || '',
+            name: selectedElement?.name || '',
             templateId: templateUuid || '',
             container: selectedTemplate?.scene_info?.container || 'Main'
         }
