@@ -76,13 +76,18 @@ export function Layout() {
   useEffect(() => {
     if (selectedTemplateId && templateDetails?.tags) {
       const initial: Record<string, string> = {}
+
+      // Try to find default values in the schema first
+      const schemaTags = selectedTemplate?.schema?.tags || []
+
       templateDetails.tags.forEach(tag => {
         const key = tag.tag_id
-        initial[key] = ''
+        const schemaTag = schemaTags.find((st: any) => st.tag_id === key)
+        initial[key] = schemaTag ? String(schemaTag.value || '') : ''
       })
       setFieldValues(initial)
     }
-  }, [selectedTemplateId, !!templateDetails, selectionVersion]) // Fire when selection changes OR data first becomes available OR forced reload
+  }, [selectedTemplateId, !!templateDetails, selectionVersion, selectedTemplate?.schema]) // Added schema to deps
 
   // Handle element selection - load saved data
   useEffect(() => {

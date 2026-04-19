@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useState, useRef, useEffect } from 'react'
 import { X, Plus, Edit2, Trash2, Check, Download, Upload } from 'lucide-react'
 import { LogoSpinner } from './LogoSpinner'
 import { useShows, Show } from '../hooks/useShows'
@@ -18,6 +18,37 @@ export function ShowsDialog({ isOpen, onClose }: ShowsDialogProps) {
 
     const [editingId, setEditingId] = useState<string | null>(null)
     const [editShowName, setEditShowName] = useState('')
+
+    const createInputRef = useRef<HTMLInputElement>(null)
+    const editInputRef = useRef<HTMLInputElement>(null)
+
+    // Reset state when dialog opens/closes
+    useEffect(() => {
+        if (!isOpen) {
+            setIsCreating(false)
+            setNewShowName('')
+            setEditingId(null)
+            setEditShowName('')
+        }
+    }, [isOpen])
+
+    // Focus management for create input
+    useEffect(() => {
+        if (isCreating) {
+            setTimeout(() => {
+                createInputRef.current?.focus()
+            }, 10)
+        }
+    }, [isCreating])
+
+    // Focus management for edit input
+    useEffect(() => {
+        if (editingId) {
+            setTimeout(() => {
+                editInputRef.current?.focus()
+            }, 10)
+        }
+    }, [editingId])
 
     if (!isOpen) return null
 
@@ -94,7 +125,8 @@ export function ShowsDialog({ isOpen, onClose }: ShowsDialogProps) {
                         Shows
                         <div style={{ display: 'flex', gap: '4px' }}>
                             <button
-                                onClick={() => {
+                                onClick={(e) => {
+                                    e.stopPropagation()
                                     setIsCreating(true)
                                     setNewShowName('')
                                 }}
@@ -106,7 +138,10 @@ export function ShowsDialog({ isOpen, onClose }: ShowsDialogProps) {
                                 <Plus size={18} />
                             </button>
                             <button
-                                onClick={handleImportClick}
+                                onClick={(e) => {
+                                    e.stopPropagation()
+                                    handleImportClick()
+                                }}
                                 style={{ background: 'transparent', border: 'none', color: 'var(--glacier-300)', cursor: 'pointer', padding: '4px', display: 'flex', alignItems: 'center', borderRadius: '4px' }}
                                 onMouseEnter={(e) => e.currentTarget.style.backgroundColor = 'var(--glacier-600)'}
                                 onMouseLeave={(e) => e.currentTarget.style.backgroundColor = 'transparent'}
@@ -148,7 +183,7 @@ export function ShowsDialog({ isOpen, onClose }: ShowsDialogProps) {
                             borderRadius: '6px', color: 'var(--glacier-50)', display: 'flex', alignItems: 'center', gap: '8px'
                         }}>
                             <input
-                                autoFocus
+                                ref={createInputRef}
                                 value={newShowName}
                                 onChange={(e) => setNewShowName(e.target.value)}
                                 onKeyDown={(e) => {
@@ -157,6 +192,7 @@ export function ShowsDialog({ isOpen, onClose }: ShowsDialogProps) {
                                 }}
                                 placeholder="Show Name..."
                                 style={{ flex: 1, background: 'transparent', border: 'none', color: '#fff', fontSize: '14px', outline: 'none' }}
+                                onClick={(e) => e.stopPropagation()}
                             />
                             <button
                                 onClick={handleCreate}
@@ -198,7 +234,7 @@ export function ShowsDialog({ isOpen, onClose }: ShowsDialogProps) {
                             {editingId === show.id ? (
                                 <div onClick={(e) => e.stopPropagation()} style={{ flex: 1, display: 'flex', alignItems: 'center' }}>
                                     <input
-                                        autoFocus
+                                        ref={editInputRef}
                                         value={editShowName}
                                         onChange={(e) => setEditShowName(e.target.value)}
                                         onKeyDown={(e) => {
@@ -206,6 +242,7 @@ export function ShowsDialog({ isOpen, onClose }: ShowsDialogProps) {
                                             if (e.key === 'Escape') setEditingId(null)
                                         }}
                                         style={{ flex: 1, background: 'transparent', border: 'none', color: '#fff', fontSize: '14px', outline: 'none' }}
+                                        onClick={(e) => e.stopPropagation()}
                                     />
                                     <div style={{ display: 'flex', gap: '4px' }}>
                                         <button

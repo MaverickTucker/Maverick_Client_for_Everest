@@ -8,6 +8,7 @@ import { useSelectionStore } from '../stores/selectionStore'
 import { useConfigStore } from '../stores/configStore'
 import { useTake, useOut, useCont, useUpdatePlayout } from '../hooks/usePlayout'
 import { useCreateElement, useUpdateElement } from '../hooks/useElementActions'
+import { useUpdateTemplate } from '../hooks/useTemplates'
 import { usePlayoutMeta } from '../hooks/usePlayoutMeta'
 import { ImportStatusModal, ImportItem } from './ImportStatusModal'
 import { PlayoutConfigModal } from './PlayoutConfigModal'
@@ -29,9 +30,10 @@ export function Menu() {
   const contMutation = useCont()
   const updatePlayoutMutation = useUpdatePlayout()
 
-  const { elements, getMeta } = usePlayoutMeta(activeShowId)
+  const { elements, templates, getMeta } = usePlayoutMeta(activeShowId)
   const createElementMutation = useCreateElement()
   const updateElementMutation = useUpdateElement()
+  const updateTemplateMutation = useUpdateTemplate()
 
   const [isShowsDialogOpen, setIsShowsDialogOpen] = useState(false)
   const [isConfigModalOpen, setIsConfigModalOpen] = useState(false)
@@ -173,26 +175,54 @@ export function Menu() {
   }
 
   const handleSave = async () => {
-    if (!activeShowId || !selectedElementId) return
+    if (!activeShowId || (!selectedElementId && !selectedTemplateId)) return
 
-    const { name, templateId } = getMeta(selectedElementId, 'element')
-    if (!templateId) {
-      console.error('Template ID not found for element update')
-      return
-    }
+    const isElement = !!selectedElementId
+    const targetId = selectedElementId || selectedTemplateId
+    const { name, templateId } = getMeta(targetId, isElement ? 'element' : 'template')
 
-    try {
-      await updateElementMutation.mutateAsync({
-        showId: activeShowId,
-        elementId: selectedElementId,
-        name,
-        templateId,
-        data: fieldValues
-      })
-      console.log('[Save] Success')
-    } catch (err) {
-      console.error('Save failed:', err)
-      alert('Failed to save element.')
+    if (isElement) {
+      if (!templateId) {
+        console.error('Template ID not found for element update')
+        return
+      }
+
+      try {
+        await updateElementMutation.mutateAsync({
+          showId: activeShowId,
+          elementId: selectedElementId,
+          name,
+          templateId,
+          data: fieldValues
+        })
+        console.log('[Save Element] Success')
+      } catch (err) {
+        console.error('Save element failed:', err)
+        alert('Failed to save element.')
+      }
+    } else {
+      // Blueprint Template Update
+      const template = templates?.find(t => t.id === selectedTemplateId)
+      if (!template) return
+
+      try {
+        await updateTemplateMutation.mutateAsync({
+          showId: activeShowId,
+          templateId: selectedTemplateId!,
+          name: template.name,
+          engine_scene_path: template.engine_scene_path || '',
+          schema: {
+            tags: Object.entries(fieldValues).map(([tag_id, value]) => ({
+              tag_id,
+              value: String(value)
+            }))
+          }
+        })
+        console.log('[Save Template Blueprint] Success')
+      } catch (err) {
+        console.error('Save template blueprint failed:', err)
+        alert('Failed to update template blueprint.')
+      }
     }
   }
 
@@ -325,10 +355,6 @@ export function Menu() {
     console.log(`[Update] Action triggered for ${isElement ? 'element' : 'template'}: ${elementId}`)
 
     try {
-      if (isElement) {
-        await handleSave()
-      }
-
       const { name, templateId, container } = getMeta(elementId, isElement ? 'element' : 'template')
 
       await updatePlayoutMutation.mutateAsync({
@@ -380,10 +406,6 @@ export function Menu() {
     console.log(`[Take] Action triggered for ${isElement ? 'element' : 'template'}: ${elementId}`)
 
     try {
-      if (isElement) {
-        await handleSave()
-      }
-
       const { name, templateId, container } = getMeta(elementId, isElement ? 'element' : 'template')
 
       await takeMutation.mutateAsync({
@@ -511,7 +533,7 @@ export function Menu() {
         <div style={{ display: 'flex', gap: '6px' }}>
           <button
             onClick={handleSave}
-            disabled={!selectedElementId || updateElementMutation.isPending}
+            disabled={(!selectedElementId && !selectedTemplateId) || updateElementMutation.isPending || updateTemplateMutation.isPending}
             style={{
               padding: '4px 12px',
               backgroundColor: 'var(--glacier-700)',
@@ -520,14 +542,14 @@ export function Menu() {
               borderRadius: '4px',
               fontSize: '11px',
               fontWeight: 700,
-              cursor: (!selectedElementId || updateElementMutation.isPending) ? 'not-allowed' : 'pointer',
-              opacity: (!selectedElementId || updateElementMutation.isPending) ? 0.5 : 1,
+              cursor: ((!selectedElementId && !selectedTemplateId) || updateElementMutation.isPending || updateTemplateMutation.isPending) ? 'not-allowed' : 'pointer',
+              opacity: ((!selectedElementId && !selectedTemplateId) || updateElementMutation.isPending || updateTemplateMutation.isPending) ? 0.5 : 1,
               display: 'flex',
               alignItems: 'center',
               gap: '4px'
             }}
           >
-            {updateElementMutation.isPending && <LogoSpinner size={10} />}
+            {(updateElementMutation.isPending || updateTemplateMutation.isPending) && <LogoSpinner size={10} />}
             SAVE
           </button>
           <button

@@ -51,8 +51,37 @@ export function useDeleteTemplate() {
         },
         onSuccess: (_, variables) => {
             queryClient.invalidateQueries({ queryKey: ['templates', variables.showId] })
-            // Also invalidate elements since they depend on templates
             queryClient.invalidateQueries({ queryKey: ['elements', variables.showId] })
+        }
+    })
+}
+
+export function useUpdateTemplate() {
+    const queryClient = useQueryClient()
+
+    return useMutation({
+        mutationFn: async (params: {
+            showId: string
+            templateId: string
+            name: string
+            engine_scene_path: string
+            schema: {
+                tags: Array<{ tag_id: string; value: string }>
+            }
+        }) => {
+            const response = await secureAxios.put(
+                `/api/shows/${params.showId}/templates/${params.templateId}`,
+                {
+                    name: params.name,
+                    engine_scene_path: params.engine_scene_path,
+                    show_id: params.showId,
+                    schema: params.schema
+                }
+            )
+            return response.data
+        },
+        onSuccess: (_, variables) => {
+            queryClient.invalidateQueries({ queryKey: ['templates', variables.showId] })
         }
     })
 }

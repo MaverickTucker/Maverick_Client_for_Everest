@@ -17,15 +17,15 @@ export const useTake = () => {
             data?: any
         }) => {
             const pathType = params.itemType === 'template' ? 'templates' : 'elements'
+            const body = {
+                name: params.name || '',
+                template_id: params.itemType === 'template' ? params.elementId : (params.templateId || ''),
+                data: params.data
+            }
+
             const response = await secureAxios.post(
                 `/api/shows/${params.showId}/${pathType}/${params.elementId}/take`,
-                params.itemType === 'template'
-                    ? (params.data || null)
-                    : {
-                        name: params.itemType === 'element' ? (params as any).name : '',
-                        template_id: params.itemType === 'element' ? (params as any).templateId : '',
-                        data: params.data
-                    },
+                body,
                 { params: { channel_id: params.channelId, layer: params.layer } }
             )
             return response.data
