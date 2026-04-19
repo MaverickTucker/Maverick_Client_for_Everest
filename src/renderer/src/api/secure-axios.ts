@@ -51,6 +51,9 @@ secureAxios.interceptors.request.use(async (config: InternalAxiosRequestConfig) 
 
     const paramsStr = config.params ? `?${new URLSearchParams(config.params).toString()}` : ''
     console.log(`[API Request] ${method} ${url}${path}${paramsStr}`)
+    if (config.data) {
+        console.log('[API Request Body]', config.data)
+    }
 
     /* 
        Disabling signatures temporarily to match user's curl guide.
@@ -62,7 +65,7 @@ secureAxios.interceptors.request.use(async (config: InternalAxiosRequestConfig) 
 
     // Include the API key
     if (API_KEY) {
-        config.headers['X-API-Key'] = API_KEY
+        config.headers['x-api-key'] = API_KEY
     } else {
         console.warn('[API Warning] No API Key found in environment!')
     }

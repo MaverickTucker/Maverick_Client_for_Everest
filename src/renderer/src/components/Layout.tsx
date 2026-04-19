@@ -3,16 +3,16 @@ import { FieldEditorPanel } from './FieldEditorPanel'
 import { Panel, Group as PanelGroup, Separator as PanelResizeHandle } from 'react-resizable-panels'
 import { useShowStore } from '../stores/showStore'
 import { useSelectionStore } from '../stores/selectionStore'
-import { useTemplates } from '../hooks/useTemplates'
 import { useConfigStore } from '../stores/configStore'
-import { useElements, Element } from '../hooks/useElements'
+import { Element } from '../hooks/useElements'
 import { Box, Layers, Play, SkipForward, Square, Eye, Trash2 } from 'lucide-react'
 import { LogoSpinner } from './LogoSpinner'
 import { useEffect, useState } from 'react'
 import { StatusBar } from './StatusBar'
-import { useTake, useOut, useCont, useRead } from '../hooks/usePlayout'
+import { useTake, useOut, useCont, useRead, useUpdatePlayout } from '../hooks/usePlayout'
 import { useDeleteElement } from '../hooks/useElementActions'
 import { useDeleteTemplate, Template } from '../hooks/useTemplates'
+import { usePlayoutMeta } from '../hooks/usePlayoutMeta'
 import { ContextMenu, ContextMenuItem } from './ContextMenu'
 
 function ResizeHandle() {
@@ -38,17 +38,21 @@ export function Layout() {
     templateOverrides,
     elementOverrides,
     updateTemplateOverride,
-    updateElementOverride
+    updateElementOverride,
+    selectionVersion,
+    fieldValues
   } = useSelectionStore()
 
-  const { data: templates, isLoading: templatesLoading } = useTemplates(activeShowId)
-  const { data: elements, isLoading: elementsLoading } = useElements(activeShowId)
+  const { templates, elements, isLoading, getMeta } = usePlayoutMeta(activeShowId)
+  const templatesLoading = isLoading
+  const elementsLoading = isLoading
 
   // Hooks
   const takeMutation = useTake()
   const contMutation = useCont()
   const outMutation = useOut()
   const readMutation = useRead()
+  const updatePlayoutMutation = useUpdatePlayout()
   const deleteElementMutation = useDeleteElement()
   const deleteTemplateMutation = useDeleteTemplate()
 
@@ -78,7 +82,7 @@ export function Layout() {
       })
       setFieldValues(initial)
     }
-  }, [selectedTemplateId, !!templateDetails]) // Fire when selection changes OR data first becomes available
+  }, [selectedTemplateId, !!templateDetails, selectionVersion]) // Fire when selection changes OR data first becomes available OR forced reload
 
   // Handle element selection - load saved data
   useEffect(() => {
@@ -93,7 +97,7 @@ export function Layout() {
         setFieldValues(currentData)
       }
     }
-  }, [selectedElementId, !!elements]) // Fire when selection changes OR elements first become available
+  }, [selectedElementId, !!elements, selectionVersion]) // Fire when selection changes OR elements first become available OR forced reload
 
   // Context Menu Handlers
   const handleContextMenu = (
@@ -108,18 +112,43 @@ export function Layout() {
     const channelId = override?.channelId || pgmChannel?.id || ''
     const layer = override?.layer || 1
 
+    const { name, templateId, container } = getMeta(item.id, type)
+    const isSelected = item.id === (type === 'element' ? selectedElementId : selectedTemplateId)
+    const currentData = isSelected ? fieldValues : (type === 'element' ? (item as Element).data : {})
+
     const items: ContextMenuItem[] = [
       {
         label: 'Take',
         icon: <Play size={14} />,
-        onClick: () => takeMutation.mutate({
-          showId: activeShowId,
-          elementId: item.id,
-          itemType: type,
-          channelId,
-          layer,
-          data: type === 'element' ? (item as Element).data : {}
-        })
+        onClick: () => {
+          takeMutation.mutate({
+            showId: activeShowId,
+            elementId: item.id,
+            itemType: type,
+            channelId,
+            layer,
+            name,
+            templateId,
+            container,
+            data: currentData
+          })
+        }
+      },
+      {
+        label: 'Update',
+        icon: <SkipForward size={14} />,
+        onClick: () => {
+          updatePlayoutMutation.mutate({
+            showId: activeShowId,
+            elementId: item.id,
+            itemType: type,
+            channelId,
+            name,
+            templateId,
+            container,
+            data: currentData
+          })
+        }
       },
       {
         label: 'Continue',

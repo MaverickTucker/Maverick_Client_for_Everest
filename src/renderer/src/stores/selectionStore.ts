@@ -8,6 +8,7 @@ interface SelectionState {
     fieldValues: Record<string, string>
     templateOverrides: Record<string, { channelId: string, layer: number }>
     elementOverrides: Record<string, { channelId: string, layer: number }>
+    selectionVersion: number
     setSelectedTemplateId: (id: string | null) => void
     setSelectedElementId: (id: string | null) => void
     setFocusedTemplateId: (id: string | null) => void
@@ -27,20 +28,23 @@ export const useSelectionStore = create<SelectionState>((set) => ({
     fieldValues: {},
     templateOverrides: {},
     elementOverrides: {},
-    setSelectedTemplateId: (id) => set({
+    selectionVersion: 0,
+    setSelectedTemplateId: (id) => set((state) => ({
         selectedTemplateId: id,
         focusedTemplateId: id,
         selectedElementId: null,
         focusedElementId: null,
-        fieldValues: {}
-    }),
-    setSelectedElementId: (id) => set({
+        fieldValues: {},
+        selectionVersion: state.selectionVersion + 1
+    })),
+    setSelectedElementId: (id) => set((state) => ({
         selectedElementId: id,
         focusedElementId: id,
         selectedTemplateId: null,
         focusedTemplateId: null,
-        fieldValues: {}
-    }),
+        fieldValues: {},
+        selectionVersion: state.selectionVersion + 1
+    })),
     setFocusedTemplateId: (id) => set({
         focusedTemplateId: id,
         focusedElementId: null,

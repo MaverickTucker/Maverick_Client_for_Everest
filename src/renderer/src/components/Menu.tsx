@@ -6,9 +6,9 @@ import { useShowStore } from '../stores/showStore'
 import { useConnectionStore } from '../stores/connectionStore'
 import { useSelectionStore } from '../stores/selectionStore'
 import { useConfigStore } from '../stores/configStore'
-import { useTake, useOut, useCont } from '../hooks/usePlayout'
+import { useTake, useOut, useCont, useUpdatePlayout } from '../hooks/usePlayout'
 import { useCreateElement, useUpdateElement } from '../hooks/useElementActions'
-import { useElements } from '../hooks/useElements'
+import { usePlayoutMeta } from '../hooks/usePlayoutMeta'
 import { ImportStatusModal, ImportItem } from './ImportStatusModal'
 import { PlayoutConfigModal } from './PlayoutConfigModal'
 import logo from '../assets/logo.png'
@@ -21,19 +21,15 @@ export function Menu() {
   const {
     selectedTemplateId,
     selectedElementId,
-    fieldValues,
-    templateOverrides,
-    elementOverrides
+    fieldValues
   } = useSelectionStore()
-
-  const channels = useConfigStore(state => state.channels)
-  const pgmChannel = channels.find(c => c.role === 'PGM') || channels[0]
 
   const takeMutation = useTake()
   const outMutation = useOut()
   const contMutation = useCont()
+  const updatePlayoutMutation = useUpdatePlayout()
 
-  const { data: elements = [] } = useElements(activeShowId)
+  const { elements, getMeta } = usePlayoutMeta(activeShowId)
   const createElementMutation = useCreateElement()
   const updateElementMutation = useUpdateElement()
 
@@ -67,48 +63,6 @@ export function Menu() {
     }
   }, [elements, activeShowId])
 
-  useEffect(() => {
-    const handleKeyDown = (e: KeyboardEvent) => {
-      if (e.key === 'F1') {
-        e.preventDefault()
-        handleDocumentation()
-      }
-    }
-
-    // Define listeners
-    const onManageShows = () => setIsShowsDialogOpen(true)
-    const onImportScene = () => handleImportScene()
-    const onSettings = () => setIsConfigModalOpen(true)
-    const onDocumentation = () => handleDocumentation()
-    const onAbout = () => handleAbout()
-
-    // @ts-ignore
-    window.electron.ipcRenderer.on('menu:manage-shows', onManageShows)
-    // @ts-ignore
-    window.electron.ipcRenderer.on('menu:import-scene', onImportScene)
-    // @ts-ignore
-    window.electron.ipcRenderer.on('menu:settings', onSettings)
-    // @ts-ignore
-    window.electron.ipcRenderer.on('menu:documentation', onDocumentation)
-    // @ts-ignore
-    window.electron.ipcRenderer.on('menu:about', onAbout)
-
-    window.addEventListener('keydown', handleKeyDown)
-
-    return () => {
-      window.removeEventListener('keydown', handleKeyDown)
-      // @ts-ignore
-      window.electron.ipcRenderer.removeAllListeners('menu:manage-shows')
-      // @ts-ignore
-      window.electron.ipcRenderer.removeAllListeners('menu:import-scene')
-      // @ts-ignore
-      window.electron.ipcRenderer.removeAllListeners('menu:settings')
-      // @ts-ignore
-      window.electron.ipcRenderer.removeAllListeners('menu:documentation')
-      // @ts-ignore
-      window.electron.ipcRenderer.removeAllListeners('menu:about')
-    }
-  }, [])
 
   const handleDocumentation = () => {
     console.log('Open Documentation')
@@ -221,10 +175,18 @@ export function Menu() {
   const handleSave = async () => {
     if (!activeShowId || !selectedElementId) return
 
+    const { name, templateId } = getMeta(selectedElementId, 'element')
+    if (!templateId) {
+      console.error('Template ID not found for element update')
+      return
+    }
+
     try {
       await updateElementMutation.mutateAsync({
         showId: activeShowId,
         elementId: selectedElementId,
+        name,
+        templateId,
         data: fieldValues
       })
       console.log('[Save] Success')
@@ -237,11 +199,12 @@ export function Menu() {
   const handleSaveAs = async () => {
     if (!activeShowId || (!selectedElementId && !selectedTemplateId)) return
 
-    try {
-      const templateId = selectedElementId
-        ? elements.find(e => e.id === selectedElementId)?.template_id || ''
-        : selectedTemplateId || ''
+    const { templateId } = getMeta(
+      selectedElementId || selectedTemplateId,
+      selectedElementId ? 'element' : 'template'
+    )
 
+    try {
       // Determine name: user slug or incremented name
       let name = slug.trim()
       if (!name) {
@@ -266,15 +229,26 @@ export function Menu() {
   }
 
   const handleOut = async () => {
-    if (!activeShowId || !pgmChannel) return
+    const {
+      selectedElementId,
+      selectedTemplateId,
+      elementOverrides,
+      templateOverrides
+    } = useSelectionStore.getState()
+
+    if (!activeShowId) return
     const isElement = !!selectedElementId
     const elementId = selectedElementId || selectedTemplateId
     if (!elementId) return
 
+    const channels = useConfigStore.getState().channels
+    const pgmChannel = channels.find(c => c.role === 'PGM') || channels[0]
     const override = isElement ? elementOverrides[elementId] : templateOverrides[elementId]
-    const channelId = override?.channelId || pgmChannel.id
+    const channelId = override?.channelId || pgmChannel?.id
 
     try {
+      if (!channelId) return
+
       await outMutation.mutateAsync({
         showId: activeShowId,
         elementId,
@@ -288,15 +262,26 @@ export function Menu() {
   }
 
   const handleCont = async () => {
-    if (!activeShowId || !pgmChannel) return
+    const {
+      selectedElementId,
+      selectedTemplateId,
+      elementOverrides,
+      templateOverrides
+    } = useSelectionStore.getState()
+
+    if (!activeShowId) return
     const isElement = !!selectedElementId
     const elementId = selectedElementId || selectedTemplateId
     if (!elementId) return
 
+    const channels = useConfigStore.getState().channels
+    const pgmChannel = channels.find(c => c.role === 'PGM') || channels[0]
     const override = isElement ? elementOverrides[elementId] : templateOverrides[elementId]
-    const channelId = override?.channelId || pgmChannel.id
+    const channelId = override?.channelId || pgmChannel?.id
 
     try {
+      if (!channelId) return
+
       await contMutation.mutateAsync({
         showId: activeShowId,
         elementId,
@@ -306,6 +291,59 @@ export function Menu() {
     } catch (err) {
       console.error('CONT action failed:', err)
       alert('Failed to trigger CONTINUE. Check server connection.')
+    }
+  }
+
+  const handleUpdate = async () => {
+    // Get latest values directly from the store to avoid any stale closures
+    const state = useSelectionStore.getState()
+    const {
+      selectedElementId: latestElementId,
+      selectedTemplateId: latestTemplateId,
+      fieldValues: latestFieldValues,
+      elementOverrides,
+      templateOverrides
+    } = state
+
+    const isElement = !!latestElementId
+    const elementId = latestElementId || latestTemplateId
+
+    // Resolve channel
+    const currentChannels = useConfigStore.getState().channels
+    const currentPgmChannel = currentChannels.find(c => c.role === 'PGM') || currentChannels[0]
+    const override = elementId ? (isElement ? elementOverrides[elementId] : templateOverrides[elementId]) : null
+    const channelId = override?.channelId || currentPgmChannel?.id
+
+    if (!activeShowId || !channelId) {
+      return
+    }
+
+    if (!elementId) {
+      return
+    }
+
+    console.log(`[Update] Action triggered for ${isElement ? 'element' : 'template'}: ${elementId}`)
+
+    try {
+      if (isElement) {
+        await handleSave()
+      }
+
+      const { name, templateId, container } = getMeta(elementId, isElement ? 'element' : 'template')
+
+      await updatePlayoutMutation.mutateAsync({
+        showId: activeShowId,
+        elementId,
+        itemType: isElement ? 'element' : 'template',
+        channelId,
+        name,
+        templateId,
+        container,
+        data: latestFieldValues
+      })
+    } catch (err) {
+      console.error('Update action failed:', err)
+      alert('Failed to trigger UPDATE. Verify engine health.')
     }
   }
 
@@ -320,28 +358,43 @@ export function Menu() {
       templateOverrides
     } = state
 
-    if (!activeShowId || !pgmChannel) return
     const isElement = !!latestElementId
     const elementId = latestElementId || latestTemplateId
+
+    // Resolve channel
+    const currentChannels = useConfigStore.getState().channels
+    const currentPgmChannel = currentChannels.find(c => c.role === 'PGM') || currentChannels[0]
+    const override = elementId ? (isElement ? elementOverrides[elementId] : templateOverrides[elementId]) : null
+    const channelId = override?.channelId || currentPgmChannel?.id
+    const layer = override?.layer || 1
+
+    if (!activeShowId || !channelId) {
+      return
+    }
+
     if (!elementId) {
       alert('Please select an element or template first.')
       return
     }
 
-    const override = isElement ? elementOverrides[elementId] : templateOverrides[elementId]
-    const channelId = override?.channelId || pgmChannel.id
-    const layer = override?.layer || 1
-
     console.log(`[Take] Action triggered for ${isElement ? 'element' : 'template'}: ${elementId}`)
-    console.log('[Take] Field Values:', latestFieldValues)
 
     try {
+      if (isElement) {
+        await handleSave()
+      }
+
+      const { name, templateId, container } = getMeta(elementId, isElement ? 'element' : 'template')
+
       await takeMutation.mutateAsync({
         showId: activeShowId,
         elementId,
         itemType: isElement ? 'element' : 'template',
         channelId,
         layer,
+        name,
+        templateId,
+        container,
         data: latestFieldValues
       })
     } catch (err) {
@@ -349,6 +402,62 @@ export function Menu() {
       alert('Failed to trigger TAKE. Verify engine health.')
     }
   }
+
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === 'F1') {
+        e.preventDefault()
+        handleDocumentation()
+      }
+      if ((e.ctrlKey || e.metaKey) && e.key === 'u') {
+        e.preventDefault()
+        console.log('[Shortcut] Ctrl+U detected')
+        handleUpdate()
+      }
+    }
+
+    // Define listeners
+    const onManageShows = () => setIsShowsDialogOpen(true)
+    const onImportScene = () => handleImportScene()
+    const onSettings = () => setIsConfigModalOpen(true)
+    const onDocumentation = () => handleDocumentation()
+    const onAbout = () => handleAbout()
+
+    // @ts-ignore
+    window.electron.ipcRenderer.on('menu:manage-shows', onManageShows)
+    // @ts-ignore
+    window.electron.ipcRenderer.on('menu:import-scene', onImportScene)
+    // @ts-ignore
+    window.electron.ipcRenderer.on('menu:settings', onSettings)
+    // @ts-ignore
+    window.electron.ipcRenderer.on('menu:documentation', onDocumentation)
+    // @ts-ignore
+    window.electron.ipcRenderer.on('menu:about', onAbout)
+
+    window.addEventListener('keydown', handleKeyDown)
+
+    return () => {
+      window.removeEventListener('keydown', handleKeyDown)
+      // @ts-ignore
+      window.electron.ipcRenderer.removeAllListeners('menu:manage-shows')
+      // @ts-ignore
+      window.electron.ipcRenderer.removeAllListeners('menu:import-scene')
+      // @ts-ignore
+      window.electron.ipcRenderer.removeAllListeners('menu:settings')
+      // @ts-ignore
+      window.electron.ipcRenderer.removeAllListeners('menu:documentation')
+      // @ts-ignore
+      window.electron.ipcRenderer.removeAllListeners('menu:about')
+    }
+  }, [
+    activeShowId,
+    handleUpdate,
+    handleImportScene,
+    handleDocumentation,
+    handleAbout,
+    setIsShowsDialogOpen,
+    setIsConfigModalOpen
+  ])
 
   return (
     <div style={{
