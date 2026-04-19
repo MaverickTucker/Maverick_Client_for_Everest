@@ -1,6 +1,6 @@
 {
   "name": "maverick-client-for-everest",
-  "version": "1.0.0",
+  "version": "1.0.1",
   "description": "Maverick Client for Everest Broadcast Graphics",
   "main": "./out/main/index.js",
   "author": "Maverick Development Team",
