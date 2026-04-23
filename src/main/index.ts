@@ -1,5 +1,6 @@
 import { app, shell, BrowserWindow, ipcMain, Menu } from 'electron'
 import { join } from 'path'
+import { spawn, ChildProcess } from 'child_process'
 import { electronApp, optimizer, is } from '@electron-toolkit/utils'
 import { enforceSecurity } from './security/anti-debug'
 import { IntegrityCheck } from './security/integrity'
@@ -25,6 +26,50 @@ CertificatePinning.setupPinning()
 // createWindow will be called in app.whenReady
 
 let mainWindow: BrowserWindow | null = null
+let ndiBridge: ChildProcess | null = null
+
+function startNDIBridge() {
+    const binName = process.platform === 'win32' ? 'ndi-bridge-v2.exe' : 'ndi-bridge-v2'
+
+    let binPath = ''
+    if (app.isPackaged) {
+        binPath = join(process.resourcesPath, 'ndi-bridge', binName)
+    } else {
+        const fs = require('fs')
+        const releasePath = join(__dirname, '../../maverick-ndi/build/Release', binName)
+        const debugPath = join(__dirname, '../../maverick-ndi/build/Debug', binName)
+        const rootPath = join(__dirname, '../../maverick-ndi/build', binName)
+
+        if (fs.existsSync(releasePath)) binPath = releasePath
+        else if (fs.existsSync(debugPath)) binPath = debugPath
+        else binPath = rootPath
+    }
+
+    console.log('[Main] Starting NDI Bridge sidecar:', binPath)
+
+    try {
+        ndiBridge = spawn(binPath, [], {
+            stdio: 'pipe',
+            cwd: require('path').dirname(binPath)
+        })
+
+        ndiBridge.stdout?.on('data', (data) => {
+            console.log(`[NDI Bridge] ${data}`)
+        })
+
+        ndiBridge.stderr?.on('data', (data) => {
+            console.error(`[NDI Bridge Error] ${data}`)
+        })
+
+        ndiBridge.on('exit', (code) => {
+            console.warn(`[NDI Bridge] Exited with code ${code}. Restarting in 3s...`)
+            ndiBridge = null
+            setTimeout(startNDIBridge, 3000)
+        })
+    } catch (error) {
+        console.error('[Main] Failed to spawn NDI Bridge:', error)
+    }
+}
 
 function updateMenu(activeShowId: string | null) {
     const template: any[] = [
@@ -173,6 +218,7 @@ app.whenReady().then(() => {
     setupSecureIPC()
 
     createWindow()
+    startNDIBridge()
 
     app.on('activate', function () {
         // On macOS it's common to re-create a window in the app when the
@@ -185,9 +231,14 @@ app.whenReady().then(() => {
 // for applications and their menu bar to stay active until the user quits
 // explicitly with Cmd + Q.
 app.on('window-all-closed', () => {
+    if (ndiBridge) ndiBridge.kill()
     if (process.platform !== 'darwin') {
         app.quit()
     }
+})
+
+app.on('before-quit', () => {
+    if (ndiBridge) ndiBridge.kill()
 })
 
 // In this file you can include the rest of your app's specific main process

@@ -6,3 +6,13 @@ release
 .DS_Store
 .env
 .eslintcache
+maverick-ndi/build
+vcpkg
+*.exe
+*.dll
+*.pdb
+*.sln
+*.vcxproj*
+x64
+Release
+Debug

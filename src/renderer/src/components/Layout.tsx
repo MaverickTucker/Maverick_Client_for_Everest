@@ -14,6 +14,8 @@ import { useDeleteElement } from '../hooks/useElementActions'
 import { useDeleteTemplate, Template } from '../hooks/useTemplates'
 import { usePlayoutMeta } from '../hooks/usePlayoutMeta'
 import { ContextMenu, ContextMenuItem } from './ContextMenu'
+import { PreviewPanel } from './PreviewPanel'
+import { useNDIStore } from '../stores/ndiStore'
 
 function ResizeHandle() {
   return (
@@ -114,6 +116,11 @@ export function Layout() {
       }
     }
   }, [selectedElementId, !!elements, selectionVersion]) // Fire when selection changes OR elements first become available OR forced reload
+
+  // Initialize NDI Connection on mount
+  useEffect(() => {
+    useNDIStore.getState().connect()
+  }, [])
 
   // Context Menu Handlers
   const handleContextMenu = (
@@ -460,14 +467,7 @@ export function Layout() {
 
                 {/* Preview */}
                 <Panel defaultSize={50} minSize={20}>
-                  <div style={{ height: 'calc(100% - 8px)', overflow: 'hidden', backgroundColor: 'rgba(49, 72, 89, 0.85)', backdropFilter: 'blur(4px)', border: '1px solid var(--glacier-700)', margin: '4px', borderRadius: '4px', display: 'flex', flexDirection: 'column' }}>
-                    <div style={{ backgroundColor: 'var(--glacier-950)', padding: '8px 16px', borderBottom: '1px solid var(--glacier-700)', flexShrink: 0 }}>
-                      <h3 style={{ margin: 0, fontSize: '14px', fontWeight: 600 }}>Preview</h3>
-                    </div>
-                    <div style={{ flex: 1, overflow: 'auto', backgroundColor: '#000', margin: '12px', borderRadius: '4px', border: '1px solid var(--glacier-700)', display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'var(--glacier-600)', fontSize: '12px' }}>
-                      PREVIEW RENDER
-                    </div>
-                  </div>
+                  <PreviewPanel />
                 </Panel>
 
               </PanelGroup>
