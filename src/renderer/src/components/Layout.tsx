@@ -77,6 +77,15 @@ export function Layout() {
     }
   }, [selectedElementId, selectedTemplateId, selectionVersion, !!elements, !!templates, setCallup])
 
+  // Clear selection and callup buffer when show changes
+  useEffect(() => {
+    if (activeShowId) {
+      console.log(`[Layout] Show changed to ${activeShowId}, clearing selection and callup buffer`)
+      useSelectionStore.getState().clearSelection()
+      useLayoutStore.getState().clearCallup()
+    }
+  }, [activeShowId])
+
   // State
 
   const [contextMenu, setContextMenu] = useState<{ x: number, y: number, items: ContextMenuItem[] } | null>(null)
