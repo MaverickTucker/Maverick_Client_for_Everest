@@ -2,6 +2,7 @@ import { useSelectionStore } from '../stores/selectionStore'
 import { useShowStore } from '../stores/showStore'
 import { useTemplates } from '../hooks/useTemplates'
 import { LogoSpinner } from './LogoSpinner'
+import { CollapsiblePanel } from './CollapsiblePanel'
 
 export function FieldEditorPanel() {
   const activeShowId = useShowStore((state) => state.activeShowId)
@@ -26,19 +27,20 @@ export function FieldEditorPanel() {
   }
 
   return (
-    <div style={{ height: 'calc(100% - 8px)', overflow: 'hidden', backgroundColor: 'rgba(49, 72, 89, 0.85)', backdropFilter: 'blur(4px)', border: '1px solid var(--glacier-700)', margin: '4px', borderRadius: '4px', display: 'flex', flexDirection: 'column' }}>
-      <div style={{ backgroundColor: 'var(--glacier-950)', padding: '8px 16px', borderBottom: '1px solid var(--glacier-700)', flexShrink: 0, display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-        <h3 style={{ margin: 0, fontSize: '14px', fontWeight: 600 }}>Field Editor</h3>
-        {(selectedTemplateId || selectedElementId) && (
+    <CollapsiblePanel
+      title="Field Editor"
+      headerRight={
+
+        (selectedTemplateId || selectedElementId) && (
           <button
             onClick={handleClear}
             style={{ background: 'transparent', border: 'none', color: 'var(--glacier-300)', cursor: 'pointer', fontSize: '11px' }}
           >
             Clear
           </button>
-        )}
-      </div>
-
+        )
+      }
+    >
       <div style={{ flex: 1, overflow: 'auto', padding: '0' }}>
         {(!selectedTemplateId && !selectedElementId) ? (
           <div style={{ flex: 1, height: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#71717a', fontSize: '14px', textAlign: 'center', padding: '24px' }}>
@@ -89,6 +91,7 @@ export function FieldEditorPanel() {
           <div style={{ fontSize: '13px', color: '#71717a', textAlign: 'center', padding: '20px' }}>No editable fields found.</div>
         )}
       </div>
-    </div>
+    </CollapsiblePanel>
   )
 }
+

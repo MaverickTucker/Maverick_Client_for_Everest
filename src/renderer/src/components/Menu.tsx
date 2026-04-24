@@ -5,13 +5,13 @@ import { ShowsDialog } from './ShowsDialog'
 import { useShowStore } from '../stores/showStore'
 import { useConnectionStore } from '../stores/connectionStore'
 import { useSelectionStore } from '../stores/selectionStore'
-import { useConfigStore } from '../stores/configStore'
-import { useTake, useOut, useCont, useUpdatePlayout } from '../hooks/usePlayout'
+import { usePlayoutActions } from '../hooks/usePlayoutActions'
 import { useCreateElement, useUpdateElement } from '../hooks/useElementActions'
 import { useUpdateTemplate } from '../hooks/useTemplates'
 import { usePlayoutMeta } from '../hooks/usePlayoutMeta'
 import { ImportStatusModal, ImportItem } from './ImportStatusModal'
 import { PlayoutConfigModal } from './PlayoutConfigModal'
+import { useLayoutStore } from '../stores/layoutStore'
 import logo from '../assets/logo.png'
 import everestLogo from '../assets/EverestLogo.png'
 
@@ -25,10 +25,8 @@ export function Menu() {
     fieldValues
   } = useSelectionStore()
 
-  const takeMutation = useTake()
-  const outMutation = useOut()
-  const contMutation = useCont()
-  const updatePlayoutMutation = useUpdatePlayout()
+
+  const { handleTake, handleOut, handleCont, handleUpdate, takeMutation, outMutation, contMutation } = usePlayoutActions()
 
   const { elements, templates, getMeta } = usePlayoutMeta(activeShowId)
   const createElementMutation = useCreateElement()
@@ -41,7 +39,7 @@ export function Menu() {
   const [importItems, setImportItems] = useState<ImportItem[]>([])
 
   // New Top Bar States
-  const [numericId, setNumericId] = useState('0000')
+  const { callupBuffer, appendCallup } = useLayoutStore()
   const [slug, setSlug] = useState('1')
 
   // Synchronize active show state to the main process for native menu updates
@@ -165,8 +163,12 @@ export function Menu() {
 
   // Handle number input (4 digits only)
   const handleNumericInput = (val: string) => {
-    const digits = val.replace(/\D/g, '').substring(0, 4)
-    setNumericId(digits.padStart(4, '0'))
+    // This will be handled by the Numpad hook globally, 
+    // but if the user types directly into the box, we can support that too.
+    const digit = val.slice(-1)
+    if (/\d/.test(digit)) {
+      appendCallup(digit)
+    }
   }
 
   const handleSlugInput = (val: string) => {
@@ -255,175 +257,6 @@ export function Menu() {
     } catch (err) {
       console.error('Save As failed:', err)
       alert('Failed to create new element.')
-    }
-  }
-
-  const handleOut = async () => {
-    const {
-      selectedElementId,
-      selectedTemplateId,
-      elementOverrides,
-      templateOverrides
-    } = useSelectionStore.getState()
-
-    if (!activeShowId) return
-    const isElement = !!selectedElementId
-    const elementId = selectedElementId || selectedTemplateId
-    if (!elementId) return
-
-    const channels = useConfigStore.getState().channels
-    const pgmChannel = channels.find(c => c.role === 'PGM') || channels[0]
-    const override = isElement ? elementOverrides[elementId] : templateOverrides[elementId]
-    const channelId = override?.channelId || pgmChannel?.id
-
-    try {
-      if (!channelId) return
-
-      await outMutation.mutateAsync({
-        showId: activeShowId,
-        elementId,
-        itemType: isElement ? 'element' : 'template',
-        channelId
-      })
-    } catch (err) {
-      console.error('OUT action failed:', err)
-      alert('Failed to trigger OUT. Check server connection.')
-    }
-  }
-
-  const handleCont = async () => {
-    const {
-      selectedElementId,
-      selectedTemplateId,
-      elementOverrides,
-      templateOverrides
-    } = useSelectionStore.getState()
-
-    if (!activeShowId) return
-    const isElement = !!selectedElementId
-    const elementId = selectedElementId || selectedTemplateId
-    if (!elementId) return
-
-    const channels = useConfigStore.getState().channels
-    const pgmChannel = channels.find(c => c.role === 'PGM') || channels[0]
-    const override = isElement ? elementOverrides[elementId] : templateOverrides[elementId]
-    const channelId = override?.channelId || pgmChannel?.id
-
-    try {
-      if (!channelId) return
-
-      await contMutation.mutateAsync({
-        showId: activeShowId,
-        elementId,
-        itemType: isElement ? 'element' : 'template',
-        channelId
-      })
-    } catch (err) {
-      console.error('CONT action failed:', err)
-      alert('Failed to trigger CONTINUE. Check server connection.')
-    }
-  }
-
-  const handleUpdate = async () => {
-    // Get latest values directly from the store to avoid any stale closures
-    const state = useSelectionStore.getState()
-    const {
-      selectedElementId: latestElementId,
-      selectedTemplateId: latestTemplateId,
-      fieldValues: latestFieldValues,
-      elementOverrides,
-      templateOverrides
-    } = state
-
-    const isElement = !!latestElementId
-    const elementId = latestElementId || latestTemplateId
-
-    // Resolve channel
-    const currentChannels = useConfigStore.getState().channels
-    const currentPgmChannel = currentChannels.find(c => c.role === 'PGM') || currentChannels[0]
-    const override = elementId ? (isElement ? elementOverrides[elementId] : templateOverrides[elementId]) : null
-    const channelId = override?.channelId || currentPgmChannel?.id
-
-    if (!activeShowId || !channelId) {
-      return
-    }
-
-    if (!elementId) {
-      return
-    }
-
-    console.log(`[Update] Action triggered for ${isElement ? 'element' : 'template'}: ${elementId}`)
-
-    try {
-      const { name, templateId, container } = getMeta(elementId, isElement ? 'element' : 'template')
-
-      await updatePlayoutMutation.mutateAsync({
-        showId: activeShowId,
-        elementId,
-        itemType: isElement ? 'element' : 'template',
-        channelId,
-        name,
-        templateId,
-        container,
-        data: latestFieldValues
-      })
-    } catch (err) {
-      console.error('Update action failed:', err)
-      alert('Failed to trigger UPDATE. Verify engine health.')
-    }
-  }
-
-  const handleTake = async () => {
-    // Get latest values directly from the store to avoid any stale closures
-    const state = useSelectionStore.getState()
-    const {
-      selectedElementId: latestElementId,
-      selectedTemplateId: latestTemplateId,
-      fieldValues: latestFieldValues,
-      elementOverrides,
-      templateOverrides
-    } = state
-
-    const isElement = !!latestElementId
-    const elementId = latestElementId || latestTemplateId
-
-    // Resolve channel
-    const currentChannels = useConfigStore.getState().channels
-    const currentPgmChannel = currentChannels.find(c => c.role === 'PGM') || currentChannels[0]
-    const override = elementId ? (isElement ? elementOverrides[elementId] : templateOverrides[elementId]) : null
-    const channelId = override?.channelId || currentPgmChannel?.id
-    const layer = override?.layer || 1
-
-    if (!activeShowId || !channelId) {
-      return
-    }
-
-    if (!elementId) {
-      alert('Please select an element or template first.')
-      return
-    }
-
-    console.log(`[Take] Action triggered for ${isElement ? 'element' : 'template'}: ${elementId}`)
-
-    try {
-      const { name, templateId, container } = getMeta(elementId, isElement ? 'element' : 'template')
-
-      console.log(`[Take] Metadata Resolved: name="${name}", templateId="${templateId}", container="${container}"`)
-
-      await takeMutation.mutateAsync({
-        showId: activeShowId,
-        elementId,
-        itemType: isElement ? 'element' : 'template',
-        channelId,
-        layer,
-        name,
-        templateId,
-        container,
-        data: latestFieldValues
-      })
-    } catch (err) {
-      console.error('TAKE action failed:', err)
-      alert('Failed to trigger TAKE. Verify engine health.')
     }
   }
 
@@ -593,8 +426,9 @@ export function Menu() {
         }}>
           <span style={{ fontSize: '13px', color: 'var(--glacier-500)', fontWeight: 700 }}>#</span>
           <input
+            id="callup-input"
             type="text"
-            value={numericId}
+            value={callupBuffer.padStart(4, '0')}
             onChange={(e) => handleNumericInput(e.target.value)}
             style={{
               background: 'transparent',

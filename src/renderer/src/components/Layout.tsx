@@ -4,16 +4,27 @@ import { Panel, Group as PanelGroup, Separator as PanelResizeHandle } from 'reac
 import { useShowStore } from '../stores/showStore'
 import { useSelectionStore } from '../stores/selectionStore'
 import { useConfigStore } from '../stores/configStore'
-import { Element } from '../hooks/useElements'
-import { Box, Layers, Play, SkipForward, Square, Eye, Trash2 } from 'lucide-react'
-import { LogoSpinner } from './LogoSpinner'
+import { Box, Play, SkipForward, Square, Eye, Trash2 } from 'lucide-react'
+
 import { useEffect, useState, useRef } from 'react'
 import { StatusBar } from './StatusBar'
-import { useTake, useOut, useCont, useRead, useUpdatePlayout } from '../hooks/usePlayout'
+import { useTake, useOut, useCont, useUpdatePlayout } from '../hooks/usePlayout'
+import { usePlayoutActions } from '../hooks/usePlayoutActions'
 import { useDeleteElement } from '../hooks/useElementActions'
 import { useDeleteTemplate, Template } from '../hooks/useTemplates'
 import { usePlayoutMeta } from '../hooks/usePlayoutMeta'
 import { ContextMenu, ContextMenuItem } from './ContextMenu'
+import { TemplatesPanel } from './TemplatesPanel'
+import { ElementsPanel } from './ElementsPanel'
+import { PreviewPanel } from './PreviewPanel'
+import { useLayoutStore } from '../stores/layoutStore'
+import { Element } from '../hooks/useElements'
+import { useNumpad } from '../hooks/useNumpad'
+
+
+
+
+
 
 function ResizeHandle() {
   return (
@@ -30,33 +41,44 @@ export function Layout() {
     setSelectedTemplateId,
     selectedElementId,
     setSelectedElementId,
-    focusedTemplateId,
-    setFocusedTemplateId,
-    focusedElementId,
-    setFocusedElementId,
     setFieldValues,
     templateOverrides,
     elementOverrides,
-    updateTemplateOverride,
-    updateElementOverride,
     selectionVersion,
     fieldValues
+
   } = useSelectionStore()
 
-  const { templates, elements, isLoading, getMeta } = usePlayoutMeta(activeShowId)
-  const templatesLoading = isLoading
-  const elementsLoading = isLoading
+  const { templates, elements, getMeta } = usePlayoutMeta(activeShowId)
 
-  // Hooks
+
+  // Hooks — mutations used directly by the right-click context menu
   const takeMutation = useTake()
   const contMutation = useCont()
   const outMutation = useOut()
-  const readMutation = useRead()
   const updatePlayoutMutation = useUpdatePlayout()
   const deleteElementMutation = useDeleteElement()
   const deleteTemplateMutation = useDeleteTemplate()
+  // Shared playout actions (used by Numpad)
+  const { handleTake, handleOut, handleCont } = usePlayoutActions()
+
+
+  // Layout Store
+  const { panelSizes, setPanelSize, setCallup } = useLayoutStore()
+
+  // Sync callup buffer with selected element/template name
+  useEffect(() => {
+    const selectedId = selectedElementId || selectedTemplateId
+    if (selectedId) {
+      const item = elements?.find(e => e.id === selectedId) || templates?.find(t => t.id === selectedId)
+      if (item && item.name) {
+        setCallup(item.name)
+      }
+    }
+  }, [selectedElementId, selectedTemplateId, selectionVersion, !!elements, !!templates, setCallup])
 
   // State
+
   const [contextMenu, setContextMenu] = useState<{ x: number, y: number, items: ContextMenuItem[] } | null>(null)
 
   // Find the selected template to get its path for the scene-info call
@@ -189,12 +211,15 @@ export function Layout() {
       {
         label: 'Read',
         icon: <Eye size={14} />,
-        onClick: () => readMutation.mutate({
-          showId: activeShowId,
-          elementId: item.id,
-          itemType: type,
-          channelId
-        })
+        onClick: () => {
+          console.log(`[DEBUG] Context Menu Read clicked for ${type}: ${item.id}`)
+          const store = useSelectionStore.getState()
+          if (type === 'template') {
+            store.setSelectedTemplateId(item.id)
+          } else {
+            store.setSelectedElementId(item.id)
+          }
+        }
       },
       {
         label: 'Delete',
@@ -216,7 +241,32 @@ export function Layout() {
 
     setContextMenu({ x: e.clientX, y: e.clientY, items })
   }
+  // Numpad Actions
+  const handleRead = () => {
+    const query = useLayoutStore.getState().callupBuffer.trim()
+    if (!query) return
 
+    const currentElements = elements
+    const currentTemplates = templates
+    const elementMatch = currentElements?.find(e => e.name.trim().toLowerCase() === query.toLowerCase())
+    if (elementMatch) {
+      useSelectionStore.getState().setSelectedElementId(elementMatch.id)
+      return
+    }
+
+    const templateMatch = currentTemplates?.find(t => t.name.trim().toLowerCase() === query.toLowerCase())
+    if (templateMatch) {
+      useSelectionStore.getState().setSelectedTemplateId(templateMatch.id)
+      return
+    }
+  }
+
+  useNumpad({
+    onRead: handleRead,
+    onTake: handleTake,
+    onContinue: handleCont,
+    onTakeOut: handleOut
+  })
 
 
   return (
@@ -231,250 +281,101 @@ export function Layout() {
         </div>
       ) : (
         <div style={{ display: 'flex', flex: 1, overflow: 'hidden' }}>
-          <PanelGroup orientation="horizontal">
+          <PanelGroup
+            orientation="horizontal"
+            onLayoutChanged={(layout: any) => {
+              const sizes = Array.isArray(layout) ? layout : Object.values(layout) as number[]
+              setPanelSize('leftColumn', sizes[0])
+              setPanelSize('rightColumn', sizes[1])
+            }}
+
+          >
 
             {/* Left Column */}
-            <Panel defaultSize={50} minSize={20}>
-              <PanelGroup orientation="vertical">
+            <Panel
+              defaultSize={panelSizes.leftColumn}
+              minSize={20}
+            >
+              <PanelGroup
+                orientation="vertical"
+                onLayoutChanged={(layout: any) => {
+                  const sizes = Array.isArray(layout) ? layout : Object.values(layout) as number[]
+                  setPanelSize('leftVerticalSplit', sizes[0])
+                }}
+
+              >
 
                 {/* Templates */}
-                <Panel defaultSize={50} minSize={20}>
-                  <div style={{ height: 'calc(100% - 8px)', overflow: 'hidden', backgroundColor: 'rgba(49, 72, 89, 0.85)', backdropFilter: 'blur(4px)', border: '1px solid var(--glacier-700)', margin: '4px', borderRadius: '4px', display: 'flex', flexDirection: 'column' }}>
-                    <div style={{ backgroundColor: 'var(--glacier-950)', padding: '6px 16px', borderBottom: '1px solid var(--glacier-700)', flexShrink: 0, display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                      <h3 style={{ margin: 0, fontSize: '12px', fontWeight: 600, display: 'flex', alignItems: 'center', gap: '8px', flex: 1 }}>
-                        <Layers size={14} className="text-mint-green" />
-                        Templates
-                      </h3>
-                      <div style={{ display: 'flex', alignItems: 'center', gap: '8px', fontSize: '10px', color: 'var(--glacier-400)', fontWeight: 700 }}>
-                        <span style={{ width: '80px', textAlign: 'center' }}>CHANNEL</span>
-                        <span style={{ width: '60px', textAlign: 'center' }}>LAYER</span>
-                      </div>
-                    </div>
-                    <div style={{ flex: 1, overflow: 'auto', padding: '12px', display: 'flex', flexDirection: 'column', gap: '4px' }}>
-                      {templatesLoading ? (
-                        <div style={{ display: 'flex', justifyContent: 'center', padding: '20px' }}><LogoSpinner size={20} /></div>
-                      ) : (
-                        templates?.map(t => {
-                          const isFocused = focusedTemplateId === t.id
-                          const isSelected = selectedTemplateId === t.id
-                          const isHighlighted = isFocused || isSelected
-                          const override = templateOverrides[t.id]
-                          const currentChannelId = override?.channelId || pgmChannel?.id || ''
-                          const currentLayer = override?.layer || 1
-
-                          return (
-                            <div
-                              key={t.id}
-                              onClick={() => setFocusedTemplateId(t.id)}
-                              onDoubleClick={() => setSelectedTemplateId(t.id)}
-                              onContextMenu={(e) => handleContextMenu(e, 'template', t)}
-                              style={{
-                                padding: '4px 12px',
-                                backgroundColor: isSelected
-                                  ? 'rgba(52, 211, 153, 0.15)'
-                                  : isFocused
-                                    ? 'rgba(145, 188, 207, 0.15)'
-                                    : 'var(--glacier-900)',
-                                borderRadius: '4px',
-                                border: '1px solid',
-                                borderColor: isSelected
-                                  ? 'var(--mint-green)'
-                                  : isFocused
-                                    ? 'var(--glacier-400)'
-                                    : 'var(--glacier-700)',
-                                opacity: isSelected ? 1 : 0.9,
-                                fontSize: '13px',
-                                cursor: 'pointer',
-                                display: 'flex',
-                                alignItems: 'center',
-                                gap: '8px',
-                                userSelect: 'none',
-                                transition: 'all 0.1s ease'
-                              }}
-                              onMouseEnter={(e) => {
-                                if (!isHighlighted) e.currentTarget.style.borderColor = 'var(--glacier-600)'
-                              }}
-                              onMouseLeave={(e) => {
-                                if (!isHighlighted) e.currentTarget.style.borderColor = 'var(--glacier-700)'
-                              }}
-                            >
-                              <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flex: 1, minWidth: 0 }}>
-                                <Layers size={14} style={{ color: isSelected ? 'var(--mint-green)' : isFocused ? 'var(--glacier-200)' : 'var(--glacier-300)', flexShrink: 0 }} />
-                                <span style={{
-                                  fontWeight: isSelected ? 700 : isFocused ? 500 : 400,
-                                  color: isSelected ? '#fff' : isFocused ? 'var(--glacier-50)' : 'var(--glacier-100)',
-                                  overflow: 'hidden',
-                                  textOverflow: 'ellipsis',
-                                  whiteSpace: 'nowrap'
-                                }}>{t.name}</span>
-                              </div>
-
-                              <select
-                                value={currentChannelId}
-                                onClick={(evt) => evt.stopPropagation()}
-                                onChange={(evt) => updateTemplateOverride(t.id, evt.target.value, currentLayer)}
-                                style={{ width: '80px', fontSize: '11px', backgroundColor: 'var(--glacier-950)', border: '1px solid var(--glacier-700)', color: 'var(--glacier-50)', borderRadius: '2px', outline: 'none' }}
-                              >
-                                {channels.map((ch: any) => (
-                                  <option key={ch.id} value={ch.id}>
-                                    {ch.name}{ch.role === 'PGM' ? ' (PGM)' : ch.role === 'PVW' ? ' (PVW)' : ''}
-                                  </option>
-                                ))}
-                              </select>
-
-                              <select
-                                value={currentLayer}
-                                onClick={(evt) => evt.stopPropagation()}
-                                onChange={(evt) => updateTemplateOverride(t.id, currentChannelId, parseInt(evt.target.value))}
-                                style={{ width: '60px', fontSize: '11px', backgroundColor: 'var(--glacier-950)', border: '1px solid var(--glacier-700)', color: 'var(--glacier-50)', borderRadius: '2px', outline: 'none', textAlign: 'center' }}
-                              >
-                                {[1, 2, 3, 4, 5, 6].map(l => (
-                                  <option key={l} value={l}>{l}</option>
-                                ))}
-                              </select>
-                            </div>
-                          )
-                        })
-                      )}
-                    </div>
-                  </div>
+                <Panel
+                  defaultSize={panelSizes.leftVerticalSplit}
+                  minSize={10}
+                >
+                  <TemplatesPanel
+                    onContextMenu={handleContextMenu}
+                  />
                 </Panel>
+
 
                 <ResizeHandle />
 
                 {/* Elements */}
-                <Panel defaultSize={50} minSize={20}>
-                  <div style={{ height: 'calc(100% - 8px)', overflow: 'hidden', backgroundColor: 'rgba(49, 72, 89, 0.85)', backdropFilter: 'blur(4px)', border: '1px solid var(--glacier-700)', margin: '4px', borderRadius: '4px', display: 'flex', flexDirection: 'column' }}>
-                    <div style={{ backgroundColor: 'var(--glacier-950)', padding: '6px 16px', borderBottom: '1px solid var(--glacier-700)', flexShrink: 0, display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                      <h3 style={{ margin: 0, fontSize: '12px', fontWeight: 600, flex: 1 }}>Elements</h3>
-                      <div style={{ display: 'flex', alignItems: 'center', gap: '8px', fontSize: '10px', color: 'var(--glacier-400)', fontWeight: 700 }}>
-                        <span style={{ width: '80px', textAlign: 'center' }}>CHANNEL</span>
-                        <span style={{ width: '60px', textAlign: 'center' }}>LAYER</span>
-                      </div>
-                    </div>
-                    <div style={{ flex: 1, overflow: 'auto', padding: '12px', display: 'flex', flexDirection: 'column', gap: '4px' }}>
-                      {elementsLoading ? (
-                        <div style={{ display: 'flex', justifyContent: 'center', padding: '20px' }}><LogoSpinner size={20} /></div>
-                      ) : (
-                        elements?.map(e => {
-                          const isFocused = focusedElementId === e.id
-                          const isSelected = selectedElementId === e.id
-                          const isHighlighted = isFocused || isSelected
-                          const override = elementOverrides[e.id]
-                          const currentChannelId = override?.channelId || pgmChannel?.id || ''
-                          const currentLayer = override?.layer || 1
-
-                          return (
-                            <div
-                              key={e.id}
-                              onClick={() => setFocusedElementId(e.id)}
-                              onDoubleClick={() => setSelectedElementId(e.id)}
-                              onContextMenu={(evt) => handleContextMenu(evt, 'element', e)}
-                              style={{
-                                padding: '4px 12px',
-                                backgroundColor: isSelected
-                                  ? 'rgba(52, 211, 153, 0.15)'
-                                  : isFocused
-                                    ? 'rgba(145, 188, 207, 0.15)'
-                                    : 'var(--glacier-900)',
-                                borderRadius: '4px',
-                                border: '1px solid',
-                                borderColor: isSelected
-                                  ? 'var(--mint-green)'
-                                  : isFocused
-                                    ? 'var(--glacier-400)'
-                                    : 'var(--glacier-700)',
-                                opacity: isSelected ? 1 : 0.9,
-                                fontSize: '13px',
-                                cursor: 'pointer',
-                                display: 'flex',
-                                alignItems: 'center',
-                                gap: '8px',
-                                userSelect: 'none',
-                                transition: 'all 0.1s ease'
-                              }}
-                              onMouseEnter={(e) => {
-                                if (!isHighlighted) e.currentTarget.style.borderColor = 'var(--glacier-600)'
-                              }}
-                              onMouseLeave={(e) => {
-                                if (!isHighlighted) e.currentTarget.style.borderColor = 'var(--glacier-700)'
-                              }}
-                            >
-                              <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flex: 1, minWidth: 0 }}>
-                                <Box size={14} style={{ color: isSelected ? 'var(--mint-green)' : isFocused ? 'var(--glacier-200)' : 'var(--glacier-300)', flexShrink: 0 }} />
-                                <span style={{
-                                  fontWeight: isSelected ? 700 : isFocused ? 500 : 400,
-                                  color: isSelected ? '#fff' : isFocused ? 'var(--glacier-50)' : 'var(--glacier-100)',
-                                  overflow: 'hidden',
-                                  textOverflow: 'ellipsis',
-                                  whiteSpace: 'nowrap'
-                                }}>{e.name}</span>
-                              </div>
-
-                              <select
-                                value={currentChannelId}
-                                onClick={(evt) => evt.stopPropagation()}
-                                onChange={(evt) => updateElementOverride(e.id, evt.target.value, currentLayer)}
-                                style={{ width: '80px', fontSize: '11px', backgroundColor: 'var(--glacier-950)', border: '1px solid var(--glacier-700)', color: 'var(--glacier-50)', borderRadius: '2px', outline: 'none' }}
-                              >
-                                {channels.map((ch: any) => (
-                                  <option key={ch.id} value={ch.id}>
-                                    {ch.name}{ch.role === 'PGM' ? ' (PGM)' : ch.role === 'PVW' ? ' (PVW)' : ''}
-                                  </option>
-                                ))}
-                              </select>
-
-                              <select
-                                value={currentLayer}
-                                onClick={(evt) => evt.stopPropagation()}
-                                onChange={(evt) => updateElementOverride(e.id, currentChannelId, parseInt(evt.target.value))}
-                                style={{ width: '60px', fontSize: '11px', backgroundColor: 'var(--glacier-950)', border: '1px solid var(--glacier-700)', color: 'var(--glacier-50)', borderRadius: '2px', outline: 'none', textAlign: 'center' }}
-                              >
-                                {[1, 2, 3, 4, 5, 6].map(l => (
-                                  <option key={l} value={l}>{l}</option>
-                                ))}
-                              </select>
-                            </div>
-                          )
-                        })
-                      )}
-                    </div>
-                  </div>
+                <Panel
+                  defaultSize={100 - panelSizes.leftVerticalSplit}
+                  minSize={10}
+                >
+                  <ElementsPanel
+                    onContextMenu={handleContextMenu}
+                  />
                 </Panel>
+
 
               </PanelGroup>
             </Panel>
 
+
             <ResizeHandle />
 
             {/* Right Column */}
-            <Panel defaultSize={50} minSize={20}>
-              <PanelGroup orientation="vertical">
+            <Panel
+              defaultSize={panelSizes.rightColumn}
+              minSize={20}
+            >
+              <PanelGroup
+                orientation="vertical"
+                onLayoutChanged={(layout: any) => {
+                  const sizes = Array.isArray(layout) ? layout : Object.values(layout) as number[]
+                  setPanelSize('rightVerticalSplit', sizes[0])
+                }}
+
+              >
 
                 {/* Field Editor */}
-                <Panel defaultSize={50} minSize={20}>
+                <Panel
+                  defaultSize={panelSizes.rightVerticalSplit}
+                  minSize={10}
+                >
                   <FieldEditorPanel />
                 </Panel>
+
 
                 <ResizeHandle />
 
                 {/* Preview */}
-                <Panel defaultSize={50} minSize={20}>
-                  <div style={{ height: 'calc(100% - 8px)', overflow: 'hidden', backgroundColor: 'rgba(49, 72, 89, 0.85)', backdropFilter: 'blur(4px)', border: '1px solid var(--glacier-700)', margin: '4px', borderRadius: '4px', display: 'flex', flexDirection: 'column' }}>
-                    <div style={{ backgroundColor: 'var(--glacier-950)', padding: '8px 16px', borderBottom: '1px solid var(--glacier-700)', flexShrink: 0 }}>
-                      <h3 style={{ margin: 0, fontSize: '14px', fontWeight: 600 }}>Preview</h3>
-                    </div>
-                    <div style={{ flex: 1, overflow: 'auto', backgroundColor: '#000', margin: '12px', borderRadius: '4px', border: '1px solid var(--glacier-700)', display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'var(--glacier-600)', fontSize: '12px' }}>
-                      PREVIEW RENDER
-                    </div>
-                  </div>
+                <Panel
+                  defaultSize={100 - panelSizes.rightVerticalSplit}
+                  minSize={10}
+                >
+                  <PreviewPanel />
                 </Panel>
+
+
 
               </PanelGroup>
             </Panel>
 
           </PanelGroup>
         </div>
+
       )}
       <StatusBar />
       {contextMenu && (
@@ -485,6 +386,7 @@ export function Layout() {
           onClose={() => setContextMenu(null)}
         />
       )}
+
     </div>
   )
 }

@@ -1,20 +1,13 @@
 import { CollapsiblePanel } from './CollapsiblePanel'
 
-interface PreviewPanelProps {
-  isCollapsed: boolean
-  onToggle: () => void
-}
-
-export function PreviewPanel({ isCollapsed, onToggle }: PreviewPanelProps) {
+export function PreviewPanel() {
   return (
-    <CollapsiblePanel
-      title="Preview"
-      isCollapsed={isCollapsed}
-      onToggle={onToggle}
-    >
-      <div className="p-4 text-glacier-300 text-sm">
-        <p>Preview will appear here</p>
+    <CollapsiblePanel title="Preview">
+      <div className="flex-1 h-full overflow-auto bg-black m-3 rounded border border-glacier-700 flex items-center justify-center color-glacier-600 text-xs">
+        PREVIEW RENDER
       </div>
     </CollapsiblePanel>
   )
 }
+
+
